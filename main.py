@@ -1,4 +1,5 @@
 import os
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -36,18 +37,39 @@ def get_profile_text(user):
 🃏 Faol rol: Yo‘q"""
 
 
+def get_main_buttons():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("👤 Profil", callback_data="profile")],
+        [InlineKeyboardButton("💵 Dollar", callback_data="dollar")],
+        [InlineKeyboardButton("💎 Olmos", callback_data="olmos")],
+        [InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="hero")],
+        [InlineKeyboardButton("💰 Do‘kon", callback_data="shop")],
+        [InlineKeyboardButton("📖 Buyumlar haqida", callback_data="items")],
+    ])
+
+
 def get_profile_buttons():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("💵 Dollar olish", callback_data="dollar")],
         [InlineKeyboardButton("💎 Olmos olish", callback_data="olmos")],
         [InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="hero")],
         [InlineKeyboardButton("💰 Do‘kon", callback_data="shop")],
-        [InlineKeyboardButton("🔻", callback_data="down")],
         [InlineKeyboardButton("📖 Buyumlar haqida", callback_data="items")],
+        [InlineKeyboardButton("🔙 Orqaga", callback_data="back")],
     ])
 
 
-# /profile komandasi
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+
+    await update.message.reply_text(
+        f"🕴️ Salom, {user.first_name or 'o‘yinchi'}!\n\n"
+        "🌃 Mafia Noir'ga xush kelibsiz.\n\n"
+        "Kerakli bo‘limni tanlang:",
+        reply_markup=get_main_buttons()
+    )
+
+
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
 
@@ -57,24 +79,69 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# Profil tugmasi bosilganda
 async def profile_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     user = query.from_user
 
-    # Har bosilganda profilni qayta chiqaradi
-    await query.message.reply_text(
+    await query.message.edit_text(
         get_profile_text(user),
         reply_markup=get_profile_buttons()
     )
 
 
-# Boshqa tugmalar
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+
+    user = query.from_user
+    data = query.data
+
+    if data == "back":
+        await query.message.edit_text(
+            f"🕴️ Salom, {user.first_name or 'o‘yinchi'}!\n\n"
+            "🌃 Mafia Noir menyusi:",
+            reply_markup=get_main_buttons()
+        )
+
+    elif data == "dollar":
+        await query.message.reply_text(
+            "💵 Dollar bo‘limi\n\n"
+            "Hozircha balans: 0 $"
+        )
+
+    elif data == "olmos":
+        await query.message.reply_text(
+            "💎 Olmos bo‘limi\n\n"
+            "Hozircha balans: 0 💎"
+        )
+
+    elif data == "hero":
+        await query.message.reply_text(
+            "⚔️ Mening Geroyim\n\n"
+            "Hozircha geroyingiz mavjud emas."
+        )
+
+    elif data == "shop":
+        await query.message.reply_text(
+            "💰 Do‘kon\n\n"
+            "🛡 Qora qalqon\n"
+            "📜 Soxta hujjat\n"
+            "⚖️ Afv tamg‘asi\n"
+            "🩸 Qotil niqobi\n"
+            "🔫 Noir miltig‘i"
+        )
+
+    elif data == "items":
+        await query.message.reply_text(
+            "📖 Buyumlar haqida\n\n"
+            "🛡 Qora qalqon — himoya buyumi\n"
+            "📜 Soxta hujjat — maxsus buyum\n"
+            "⚖️ Afv tamg‘asi — jazodan qutulish\n"
+            "🩸 Qotil niqobi — maxsus rol buyumi\n"
+            "🔫 Noir miltig‘i — maxsus qurol"
+        )
 
 
 def main():
@@ -83,12 +150,15 @@ def main():
 
     app = Application.builder().token(TOKEN).build()
 
-    # /profile komandasi
+    app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("profile", profile))
 
-    # PROFILE tugmasi uchun
+    # 👤 PROFIL TUGMASI
     app.add_handler(
-        CallbackQueryHandler(profile_button, pattern="^profile$")
+        CallbackQueryHandler(
+            profile_button,
+            pattern="^profile$"
+        )
     )
 
     # Qolgan tugmalar

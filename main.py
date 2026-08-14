@@ -1,6 +1,11 @@
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+)
 
 TOKEN = os.getenv("BOT_TOKEN")
 
@@ -41,10 +46,29 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("📖 Buyumlar haqida", callback_data="none")],
     ]
 
-    await update.message.reply_text(
-        profile_text,
-        reply_markup=InlineKeyboardMarkup(buttons)
-    )
+    # /profile har safar yangi profil chiqaradi
+    if update.message:
+        await update.message.reply_text(
+            profile_text,
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
+
+    # Agar profil inline tugma orqali chaqirilsa ham ishlaydi
+    elif update.callback_query:
+        query = update.callback_query
+        await query.answer()
+
+        await query.message.edit_text(
+            profile_text,
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
+
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+
+    # Telegramga callback qabul qilinganini bildiradi
+    await query.answer()
 
 
 def main():
@@ -53,7 +77,11 @@ def main():
 
     app = Application.builder().token(TOKEN).build()
 
+    # /profile
     app.add_handler(CommandHandler("profile", profile))
+
+    # Inline tugmalar
+    app.add_handler(CallbackQueryHandler(button_handler))
 
     app.run_polling(drop_pending_updates=True)
 

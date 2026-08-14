@@ -1,102 +1,42 @@
-# main.py
 import os
 import json
-import random
 from pathlib import Path
-
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-)
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
-TOKEN = os.getenv("BOT_TOKEN", "TOKENINGIZNI_BU_YERGA_QOYING")
+TOKEN = os.getenv("BOT_TOKEN")
 DATA_FILE = Path("data.json")
 
-MONEY_MIN_GIVE = 100
-GEM_MIN_GIVE = 1
-DOLLAR_TO_GEM = 700
-STARS_PER_GEM = 10
-
-ROLES = {
-    "mafia": [
-        ("Don", "🤵🏻"),
-        ("Mafia", "🥷"),
-        ("Qotil", "🔪"),
-        ("Komissar", "🔎"),
-        ("Daydi", "🏃"),
-        ("Zaharchi", "☠️"),
-        ("Advokat", "⚖️"),
-        ("Manyak", "🗡️"),
-    ],
-    "aholi": [
-        ("Doktor", "🩺"),
-        ("Serjant", "👮"),
-        ("Janob", "🎩"),
-        ("Tinch axoli", "🧓"),
-        ("Sherif", "⭐"),
-        ("Qo‘riqchi", "🛡️"),
-        ("O‘g‘ri", "🥷"),
-        ("Qasoskor", "⚔️"),
-        ("Sehrgar", "🪄"),
-        ("Jurnalist", "📰"),
-        ("Kimyogar", "🧪"),
-        ("Himoyachi", "🛡️"),
-        ("Jodugar", "🔮"),
-    ],
-    "yakka": [
-        ("Joker", "🃏"),
-        ("Vampir", "🧛"),
-        ("Ovchi", "🏹"),
-        ("Yollanma qotil", "🎯"),
-    ],
-}
-
 ITEMS = {
-    "Qora qalqon": ("🛡", 700, "Bir marta hujumdan himoya qiladi."),
-    "Soxta hujjat": ("📜", 900, "Tekshiruvni bir marta chalg‘itadi."),
-    "Afv tamg‘asi": ("⚖️", 1200, "Ovoz berishdan bir marta qutqaradi."),
-    "Qotil niqobi": ("🩸", 1500, "Hujumni yashirin bajarishga yordam beradi."),
-    "Noir miltig‘i": ("🔫", 1800, "Maxsus hujum buyumi."),
-    "Qora dori": ("💊", 1000, "Bir marta qo‘shimcha himoya beradi."),
-    "Verbena ekstrakti": ("🧪", 1300, "Vampirga qarshi maxsus vosita."),
-    "Sirli niqob": ("🎭", 1600, "Rolni yashirishga yordam beradi."),
-    "Geroydan himoya": ("🛡️", 2000, "Geroy qobiliyatidan himoya qiladi."),
+    "Qora qalqon": ("🛡", 700, "Himoya"),
+    "Soxta hujjat": ("📜", 900, "Tekshiruvni chalg‘itadi"),
+    "Afv tamg‘asi": ("⚖️", 1200, "Ovozdan qutqaradi"),
+    "Qotil niqobi": ("🩸", 1500, "Hujumni yashiradi"),
+    "Noir miltig‘i": ("🔫", 1800, "Maxsus hujum"),
+    "Qora dori": ("💊", 1000, "Himoya beradi"),
+    "Verbena ekstrakti": ("🧪", 1300, "Vampirga qarshi"),
+    "Sirli niqob": ("🎭", 1600, "Rolni yashiradi"),
+    "Geroydan himoya": ("🛡️", 2000, "Geroydan himoya"),
 }
 
-HERO_LEVELS = {
-    1: (0, "Oddiy qobiliyat"),
-    2: (100, "Kuchaytirilgan qobiliyat"),
-    3: (250, "Ikkinchi maxsus qobiliyat"),
-    4: (500, "Kuchli himoya"),
-    5: (1000, "Maxsus Geroy kuchi"),
-}
+def load():
+    if DATA_FILE.exists():
+        try:
+            return json.loads(DATA_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {"users": {}, "games": {}}
 
+DATA = load()
 
-def load_data():
-    if not DATA_FILE.exists():
-        return {"users": {}, "games": {}}
-    try:
-        return json.loads(DATA_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return {"users": {}, "games": {}}
-
-
-DATA = load_data()
-
-
-def save_data():
+def save():
     DATA_FILE.write_text(
         json.dumps(DATA, ensure_ascii=False, indent=2),
-        encoding="utf-8",
+        encoding="utf-8"
     )
 
-
-def get_user(user):
+def user_data(user):
     uid = str(user.id)
-
     if uid not in DATA["users"]:
         DATA["users"][uid] = {
             "id": user.id,
@@ -108,21 +48,69 @@ def get_user(user):
             "games": 0,
             "hero": None,
             "hero_xp": 0,
-            "items": {name: 0 for name in ITEMS},
             "role": None,
-            "active": False,
+            "items": {x: 0 for x in ITEMS},
         }
-
     DATA["users"][uid]["name"] = user.first_name or "O‘yinchi"
     return DATA["users"][uid]
 
+def profile_text(u):
+    games = u["games"]
+    percent = round(u["wins"] / games * 100, 1) if games else 0
 
-def win_percent(user):
-    if user["games"] == 0:
-        return 0
-    return round(user["wins"] / user["games"] * 100, 1)
+    text = (
+        "🕴️ • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •\n\n"
+        f"👤 Ism: {u['name']}\n"
+        f"🆔 ID: {u['id']}\n\n"
+        f"💵 Dollar: {u['money']}\n"
+        f"💎 Olmos: {u['gems']}\n\n"
+    )
 
+    for name, (emoji, _, _) in ITEMS.items():
+        text += f"{emoji} {name}: {u['items'].get(name, 0)}\n"
 
-def profile_text(user):
-    lines = [
-        "🕴
+    text += (
+        f"\n🎯 G‘alabalar: {u['wins']}\n"
+        f"🎲 Barcha o‘yinlar: {games}\n"
+        f"📊 G‘alaba foizi: {percent}%\n\n"
+        f"🃏 Faol rol: {u['role'] or 'Yo‘q'}"
+    )
+    return text
+
+def profile_keyboard():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("💵 Dollar olish", callback_data="money"),
+            InlineKeyboardButton("💎 Olmos olish", callback_data="gems"),
+        ],
+        [
+            InlineKeyboardButton("🦸 Mening Geroyim", callback_data="hero"),
+            InlineKeyboardButton("🛒 Do‘kon", callback_data="shop"),
+        ],
+        [
+            InlineKeyboardButton("🔽 Pastga", callback_data="down"),
+            InlineKeyboardButton("📖 Buyumlar haqida", callback_data="info"),
+        ],
+    ])
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_data(update.effective_user)
+    save()
+    await update.message.reply_text(
+        "🕴️ • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •\n\n"
+        "🌑 Sirlar yashirin.\n"
+        "🎭 Rollar noma’lum.\n"
+        "🔥 Ishonch esa xavfli.\n\n"
+        "/game — O‘yinni boshlash\n"
+        "/profile — Profil"
+    )
+
+async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    u = user_data(update.effective_user)
+    save()
+    await update.message.reply_text(
+        profile_text(u),
+        reply_markup=profile_keyboard()
+    )
+
+async def roles(update: Update, context: Context

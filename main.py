@@ -45,30 +45,3 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ],
         [
             InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="unused"),
-            InlineKeyboardButton("💰 Do‘kon", callback_data="unused"),
-        ],
-        [
-            InlineKeyboardButton("🔻", callback_data="unused"),
-            InlineKeyboardButton("📖 Buyumlar haqida", callback_data="unused"),
-        ],
-    ]
-
-    await update.message.reply_text(
-        text,
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-
-
-def main():
-    if not TOKEN:
-        raise ValueError("BOT_TOKEN topilmadi!")
-
-    app = Application.builder().token(TOKEN).build()
-
-    app.add_handler(CommandHandler("profile", profile))
-
-    app.run_polling()
-
-
-if __name__ == "__main__":
-    main()

@@ -10,10 +10,8 @@ from telegram.ext import (
 TOKEN = os.getenv("BOT_TOKEN")
 
 
-async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-
-    profile_text = f"""🕴️ • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •
+def get_profile_text(user):
+    return f"""🕴️ • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •
 
 👤 Ism: {user.first_name or "Noma'lum"}
 🆔 ID: {user.id}
@@ -37,37 +35,45 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 🃏 Faol rol: Yo‘q"""
 
-    buttons = [
-        [InlineKeyboardButton("💵 Dollar olish", callback_data="none")],
-        [InlineKeyboardButton("💎 Olmos olish", callback_data="none")],
-        [InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="none")],
-        [InlineKeyboardButton("💰 Do‘kon", callback_data="none")],
-        [InlineKeyboardButton("🔻", callback_data="none")],
-        [InlineKeyboardButton("📖 Buyumlar haqida", callback_data="none")],
-    ]
 
-    # /profile har safar yangi profil chiqaradi
-    if update.message:
-        await update.message.reply_text(
-            profile_text,
-            reply_markup=InlineKeyboardMarkup(buttons)
-        )
-
-    # Agar profil inline tugma orqali chaqirilsa ham ishlaydi
-    elif update.callback_query:
-        query = update.callback_query
-        await query.answer()
-
-        await query.message.edit_text(
-            profile_text,
-            reply_markup=InlineKeyboardMarkup(buttons)
-        )
+def get_profile_buttons():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("💵 Dollar olish", callback_data="dollar")],
+        [InlineKeyboardButton("💎 Olmos olish", callback_data="olmos")],
+        [InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="hero")],
+        [InlineKeyboardButton("💰 Do‘kon", callback_data="shop")],
+        [InlineKeyboardButton("🔻", callback_data="down")],
+        [InlineKeyboardButton("📖 Buyumlar haqida", callback_data="items")],
+    ])
 
 
+# /profile komandasi
+async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+
+    await update.message.reply_text(
+        get_profile_text(user),
+        reply_markup=get_profile_buttons()
+    )
+
+
+# Profil tugmasi bosilganda
+async def profile_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    user = query.from_user
+
+    # Har bosilganda profilni qayta chiqaradi
+    await query.message.reply_text(
+        get_profile_text(user),
+        reply_markup=get_profile_buttons()
+    )
+
+
+# Boshqa tugmalar
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-
-    # Telegramga callback qabul qilinganini bildiradi
     await query.answer()
 
 
@@ -77,11 +83,18 @@ def main():
 
     app = Application.builder().token(TOKEN).build()
 
-    # /profile
+    # /profile komandasi
     app.add_handler(CommandHandler("profile", profile))
 
-    # Inline tugmalar
-    app.add_handler(CallbackQueryHandler(button_handler))
+    # PROFILE tugmasi uchun
+    app.add_handler(
+        CallbackQueryHandler(profile_button, pattern="^profile$")
+    )
+
+    # Qolgan tugmalar
+    app.add_handler(
+        CallbackQueryHandler(button_handler)
+    )
 
     app.run_polling(drop_pending_updates=True)
 

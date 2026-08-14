@@ -40,16 +40,16 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = [
         [
-            InlineKeyboardButton("💵 Dollar olish", callback_data="unused"),
-            InlineKeyboardButton("💎 Olmos olish", callback_data="unused"),
+            InlineKeyboardButton("💵 Dollar olish", callback_data="none"),
+            InlineKeyboardButton("💎 Olmos olish", callback_data="none"),
         ],
         [
-            InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="unused"),
-            InlineKeyboardButton("💰 Do‘kon", callback_data="unused"),
+            InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="none"),
+            InlineKeyboardButton("💰 Do‘kon", callback_data="none"),
         ],
         [
-            InlineKeyboardButton("🔻", callback_data="unused"),
-            InlineKeyboardButton("📖 Buyumlar haqida", callback_data="unused"),
+            InlineKeyboardButton("🔻", callback_data="none"),
+            InlineKeyboardButton("📖 Buyumlar haqida", callback_data="none"),
         ],
     ]
 

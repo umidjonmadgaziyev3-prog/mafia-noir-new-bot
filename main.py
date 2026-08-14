@@ -3,20 +3,17 @@ import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-
 TOKEN = os.getenv("BOT_TOKEN")
 
 
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-
     name = user.first_name or "Noma'lum"
-    user_id = user.id
 
     text = f"""🕴️ • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •
 
 👤 Ism: {name}
-🆔 ID: {user_id}
+🆔 ID: {user.id}
 
 💵 Dollar: 0
 💎 Olmos: 0
@@ -35,8 +32,7 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🎲 Barcha o‘yinlar: 0
 📊 G‘alaba foizi: 0%
 
-🃏 Faol rol: Yo‘q
-"""
+🃏 Faol rol: Yo‘q"""
 
     keyboard = [
         [

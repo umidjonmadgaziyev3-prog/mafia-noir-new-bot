@@ -3,12 +3,7 @@ import json
 from pathlib import Path
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-)
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 TOKEN = os.getenv("BOT_TOKEN")
 FILE = Path("data.json")
@@ -77,56 +72,29 @@ def get_user(tg_user):
 def main_buttons():
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton(
-                "💵 Dollar olish",
-                callback_data="money"
-            ),
-            InlineKeyboardButton(
-                "💎 Olmos olish",
-                callback_data="gems"
-            ),
+            InlineKeyboardButton("💵 Dollar olish", callback_data="money"),
+            InlineKeyboardButton("💎 Olmos olish", callback_data="gems"),
         ],
         [
-            InlineKeyboardButton(
-                "🦸 Mening Geroyim",
-                callback_data="hero"
-            ),
-            InlineKeyboardButton(
-                "🛒 Do'kon",
-                callback_data="shop"
-            ),
+            InlineKeyboardButton("🦸 Mening Geroyim", callback_data="hero"),
+            InlineKeyboardButton("🛒 Do'kon", callback_data="shop"),
         ],
         [
-            InlineKeyboardButton(
-                "🔽 Pastga",
-                callback_data="down"
-            ),
-            InlineKeyboardButton(
-                "📖 Buyumlar haqida",
-                callback_data="info"
-            ),
+            InlineKeyboardButton("🔽 Pastga", callback_data="down"),
+            InlineKeyboardButton("📖 Buyumlar haqida", callback_data="info"),
         ],
     ])
 
 
 def back_button():
     return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "⬅️ Orqaga",
-                callback_data="back"
-            )
-        ]
+        [InlineKeyboardButton("⬅️ Orqaga", callback_data="back")]
     ])
 
 
 def profile_text(u):
     games = u["games"]
-
-    if games > 0:
-        winrate = round(u["wins"] / games * 100, 1)
-    else:
-        winrate = 0
+    winrate = round(u["wins"] / games * 100, 1) if games else 0
 
     text = (
         "🕴️ • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •\n\n"
@@ -153,13 +121,10 @@ def shop_text():
     text = "🛒 • 𝑫𝒐'𝒌𝒐𝒏 •\n\n"
 
     for name, (emoji, price) in ITEMS.items():
-        text += (
-            f"{emoji} {name}\n"
-            f"💵 Narxi: ${price}\n\n"
-        )
+        text += f"{emoji} {name}\n"
+        text += f"💵 Narxi: ${price}\n\n"
 
-    text += "👇 Sotib olish uchun buyumni tanlang:"
-    return text
+    return text + "👇 Sotib olish uchun buyumni tanlang:"
 
 
 def shop_buttons():
@@ -174,10 +139,7 @@ def shop_buttons():
         ])
 
     rows.append([
-        InlineKeyboardButton(
-            "⬅️ Orqaga",
-            callback_data="back"
-        )
+        InlineKeyboardButton("⬅️ Orqaga", callback_data="back")
     ])
 
     return InlineKeyboardMarkup(rows)
@@ -232,10 +194,7 @@ async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def callback_handler(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
+async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
@@ -346,31 +305,19 @@ async def error_handler(update, context):
 
 def main():
     if not TOKEN:
-        raise RuntimeError(
-            "BOT_TOKEN topilmadi!"
-        )
+        raise RuntimeError("BOT_TOKEN topilmadi!")
 
     app = Application.builder().token(TOKEN).build()
 
-    app.add_handler(
-        CommandHandler("start", start)
-    )
-
-    app.add_handler(
-        CommandHandler("profile", profile_command)
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(callback_handler)
-    )
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("profile", profile_command))
+    app.add_handler(CallbackQueryHandler(callback_handler))
 
     app.add_error_handler(error_handler)
 
     print("Mafia Noir Bot ishga tushdi...")
 
-    app.run_polling(
-        allowed_updates=Update.ALL_TYPES
-    )
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":

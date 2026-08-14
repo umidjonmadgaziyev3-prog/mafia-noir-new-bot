@@ -65,6 +65,7 @@ def main():
 
     app = Application.builder().token(TOKEN).build()
 
+    app.add_handler(CommandHandler("start", profile))
     app.add_handler(CommandHandler("profile", profile))
 
     app.run_polling()

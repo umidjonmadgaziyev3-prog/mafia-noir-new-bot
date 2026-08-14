@@ -67,61 +67,37 @@ TEXTS = {
 def telegram(method, data=None):
     response = requests.post(
         f"{API}/{method}",
-        json=data or {}
+        json=data or {},
+        timeout=40
     )
     return response.json()
 
 
 def language_keyboard():
     return {
-        "inline_keyboard": [[
-            {
-                "text": LANGUAGES["uz"],
-                "callback_data": "lang_uz"
-            },
-            {
-                "text": LANGUAGES["ru"],
-                "callback_data": "lang_ru"
-            },
-            {
-                "text": LANGUAGES["en"],
-                "callback_data": "lang_en"
-            },
-            {
-                "text": LANGUAGES["tr"],
-                "callback_data": "lang_tr"
-            },
-            {
-                "text": LANGUAGES["kk"],
-                "callback_data": "lang_kk"
-            },
-            {
-                "text": LANGUAGES["uk"],
-                "callback_data": "lang_uk"
-            },
-            {
-                "text": LANGUAGES["de"],
-                "callback_data": "lang_de"
-            }
-        ]]
+        "inline_keyboard": [
+            [{"text": LANGUAGES["uz"], "callback_data": "lang_uz"}],
+            [{"text": LANGUAGES["ru"], "callback_data": "lang_ru"}],
+            [{"text": LANGUAGES["en"], "callback_data": "lang_en"}],
+            [{"text": LANGUAGES["tr"], "callback_data": "lang_tr"}],
+            [{"text": LANGUAGES["kk"], "callback_data": "lang_kk"}],
+            [{"text": LANGUAGES["uk"], "callback_data": "lang_uk"}],
+            [{"text": LANGUAGES["de"], "callback_data": "lang_de"}]
+        ]
     }
 
 
 def main_keyboard(lang):
     return {
         "inline_keyboard": [
-            [
-                {
-                    "text": TEXTS[lang]["add"],
-                    "url": "https://t.me/Noiruzbot?startgroup=true"
-                }
-            ],
-            [
-                {
-                    "text": TEXTS[lang]["owner"],
-                    "url": "https://t.me/Umarov_uuu"
-                }
-            ]
+            [{
+                "text": TEXTS[lang]["add"],
+                "url": "https://t.me/Noiruzbot?startgroup=true"
+            }],
+            [{
+                "text": TEXTS[lang]["owner"],
+                "url": "https://t.me/Umarov_uuu"
+            }]
         ]
     }
 
@@ -180,9 +156,7 @@ def handle_update(update):
             if lang in TEXTS:
                 telegram(
                     "answerCallbackQuery",
-                    {
-                        "callback_query_id": callback_id
-                    }
+                    {"callback_query_id": callback_id}
                 )
 
                 edit_message(
@@ -199,24 +173,28 @@ def main():
     print("Mafia Noir bot ishga tushdi...")
 
     while True:
-        result = telegram(
-            "getUpdates",
-            {
-                "offset": offset,
-                "timeout": 30
-            }
-        )
+        try:
+            result = telegram(
+                "getUpdates",
+                {
+                    "offset": offset,
+                    "timeout": 30
+                }
+            )
 
-        if not result.get("ok"):
-            continue
+            if not result.get("ok"):
+                continue
 
-        for update in result.get("result", []):
-            offset = update["update_id"] + 1
+            for update in result.get("result", []):
+                offset = update["update_id"] + 1
 
-            try:
-                handle_update(update)
-            except Exception as e:
-                print("Xatolik:", e)
+                try:
+                    handle_update(update)
+                except Exception as e:
+                    print("Update xatosi:", e)
+
+        except Exception as e:
+            print("Bot xatosi:", e)
 
 
 if __name__ == "__main__":

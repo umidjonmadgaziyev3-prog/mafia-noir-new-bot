@@ -1,201 +1,128 @@
+# main.py
 import os
-import requests
+import json
+import random
+from pathlib import Path
 
-TOKEN = os.getenv("BOT_TOKEN")
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+)
 
-if not TOKEN:
-    raise RuntimeError("BOT_TOKEN topilmadi")
+TOKEN = os.getenv("BOT_TOKEN", "TOKENINGIZNI_BU_YERGA_QOYING")
+DATA_FILE = Path("data.json")
 
-API = f"https://api.telegram.org/bot{TOKEN}"
+MONEY_MIN_GIVE = 100
+GEM_MIN_GIVE = 1
+DOLLAR_TO_GEM = 700
+STARS_PER_GEM = 10
 
-LANGUAGES = {
-    "uz": "🇺🇿 O‘zbekcha",
-    "ru": "🇷🇺 Русский",
-    "en": "🇬🇧 English",
-    "tr": "🇹🇷 Türkçe",
-    "kk": "🇰🇿 Қазақша",
-    "uk": "🇺🇦 Українська",
-    "de": "🇩🇪 Deutsch"
+ROLES = {
+    "mafia": [
+        ("Don", "🤵🏻"),
+        ("Mafia", "🥷"),
+        ("Qotil", "🔪"),
+        ("Komissar", "🔎"),
+        ("Daydi", "🏃"),
+        ("Zaharchi", "☠️"),
+        ("Advokat", "⚖️"),
+        ("Manyak", "🗡️"),
+    ],
+    "aholi": [
+        ("Doktor", "🩺"),
+        ("Serjant", "👮"),
+        ("Janob", "🎩"),
+        ("Tinch axoli", "🧓"),
+        ("Sherif", "⭐"),
+        ("Qo‘riqchi", "🛡️"),
+        ("O‘g‘ri", "🥷"),
+        ("Qasoskor", "⚔️"),
+        ("Sehrgar", "🪄"),
+        ("Jurnalist", "📰"),
+        ("Kimyogar", "🧪"),
+        ("Himoyachi", "🛡️"),
+        ("Jodugar", "🔮"),
+    ],
+    "yakka": [
+        ("Joker", "🃏"),
+        ("Vampir", "🧛"),
+        ("Ovchi", "🏹"),
+        ("Yollanma qotil", "🎯"),
+    ],
 }
 
-TEXTS = {
-    "uz": {
-        "language": "Tilni tanlang:",
-        "welcome": "Salom! Xush kelibsiz! 👋\n\nMen Mafia Noir botiman. Mafia o‘ynash uchun meni guruhingizga qo‘shing. 🎭",
-        "add": "Guruhga qo‘shish ➕",
-        "owner": "Savollar uchun Owner 👑"
-    },
-    "ru": {
-        "language": "Выберите язык:",
-        "welcome": "Привет! Добро пожаловать! 👋\n\nЯ бот Mafia Noir. Чтобы играть в Mafia, добавьте меня в свою группу. 🎭",
-        "add": "Добавить в группу ➕",
-        "owner": "Вопросы для Owner 👑"
-    },
-    "en": {
-        "language": "Choose your language:",
-        "welcome": "Hello! Welcome! 👋\n\nI am the Mafia Noir bot. Add me to your group to play Mafia. 🎭",
-        "add": "Add to group ➕",
-        "owner": "Questions for Owner 👑"
-    },
-    "tr": {
-        "language": "Dil seçin:",
-        "welcome": "Merhaba! Hoş geldiniz! 👋\n\nBen Mafia Noir botuyum. Mafia oynamak için beni grubunuza ekleyin. 🎭",
-        "add": "Gruba ekle ➕",
-        "owner": "Sorular için Owner 👑"
-    },
-    "kk": {
-        "language": "Тілді таңдаңыз:",
-        "welcome": "Сәлем! Қош келдіңіз! 👋\n\nМен Mafia Noir ботымын. Mafia ойнау үшін мені тобыңызға қосыңыз. 🎭",
-        "add": "Топқа қосу ➕",
-        "owner": "Сұрақтар үшін Owner 👑"
-    },
-    "uk": {
-        "language": "Оберіть мову:",
-        "welcome": "Привіт! Ласкаво просимо! 👋\n\nЯ бот Mafia Noir. Щоб грати в Mafia, додайте мене до своєї групи. 🎭",
-        "add": "Додати в групу ➕",
-        "owner": "Питання для Owner 👑"
-    },
-    "de": {
-        "language": "Sprache auswählen:",
-        "welcome": "Hallo! Willkommen! 👋\n\nIch bin der Mafia Noir Bot. Füge mich deiner Gruppe hinzu, um Mafia zu spielen. 🎭",
-        "add": "Zur Gruppe hinzufügen ➕",
-        "owner": "Fragen für Owner 👑"
-    }
+ITEMS = {
+    "Qora qalqon": ("🛡", 700, "Bir marta hujumdan himoya qiladi."),
+    "Soxta hujjat": ("📜", 900, "Tekshiruvni bir marta chalg‘itadi."),
+    "Afv tamg‘asi": ("⚖️", 1200, "Ovoz berishdan bir marta qutqaradi."),
+    "Qotil niqobi": ("🩸", 1500, "Hujumni yashirin bajarishga yordam beradi."),
+    "Noir miltig‘i": ("🔫", 1800, "Maxsus hujum buyumi."),
+    "Qora dori": ("💊", 1000, "Bir marta qo‘shimcha himoya beradi."),
+    "Verbena ekstrakti": ("🧪", 1300, "Vampirga qarshi maxsus vosita."),
+    "Sirli niqob": ("🎭", 1600, "Rolni yashirishga yordam beradi."),
+    "Geroydan himoya": ("🛡️", 2000, "Geroy qobiliyatidan himoya qiladi."),
+}
+
+HERO_LEVELS = {
+    1: (0, "Oddiy qobiliyat"),
+    2: (100, "Kuchaytirilgan qobiliyat"),
+    3: (250, "Ikkinchi maxsus qobiliyat"),
+    4: (500, "Kuchli himoya"),
+    5: (1000, "Maxsus Geroy kuchi"),
 }
 
 
-def telegram(method, data=None):
-    response = requests.post(
-        f"{API}/{method}",
-        json=data or {},
-        timeout=40
+def load_data():
+    if not DATA_FILE.exists():
+        return {"users": {}, "games": {}}
+    try:
+        return json.loads(DATA_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {"users": {}, "games": {}}
+
+
+DATA = load_data()
+
+
+def save_data():
+    DATA_FILE.write_text(
+        json.dumps(DATA, ensure_ascii=False, indent=2),
+        encoding="utf-8",
     )
-    return response.json()
 
 
-def language_keyboard():
-    return {
-        "inline_keyboard": [
-            [{"text": LANGUAGES["uz"], "callback_data": "lang_uz"}],
-            [{"text": LANGUAGES["ru"], "callback_data": "lang_ru"}],
-            [{"text": LANGUAGES["en"], "callback_data": "lang_en"}],
-            [{"text": LANGUAGES["tr"], "callback_data": "lang_tr"}],
-            [{"text": LANGUAGES["kk"], "callback_data": "lang_kk"}],
-            [{"text": LANGUAGES["uk"], "callback_data": "lang_uk"}],
-            [{"text": LANGUAGES["de"], "callback_data": "lang_de"}]
-        ]
-    }
+def get_user(user):
+    uid = str(user.id)
+
+    if uid not in DATA["users"]:
+        DATA["users"][uid] = {
+            "id": user.id,
+            "name": user.first_name or "O‘yinchi",
+            "money": 0,
+            "gems": 0,
+            "para": False,
+            "wins": 0,
+            "games": 0,
+            "hero": None,
+            "hero_xp": 0,
+            "items": {name: 0 for name in ITEMS},
+            "role": None,
+            "active": False,
+        }
+
+    DATA["users"][uid]["name"] = user.first_name or "O‘yinchi"
+    return DATA["users"][uid]
 
 
-def main_keyboard(lang):
-    return {
-        "inline_keyboard": [
-            [{
-                "text": TEXTS[lang]["add"],
-                "url": "https://t.me/Noiruzbot?startgroup=true"
-            }],
-            [{
-                "text": TEXTS[lang]["owner"],
-                "url": "https://t.me/Umarov_uuu"
-            }]
-        ]
-    }
+def win_percent(user):
+    if user["games"] == 0:
+        return 0
+    return round(user["wins"] / user["games"] * 100, 1)
 
 
-def send_message(chat_id, text, reply_markup=None):
-    data = {
-        "chat_id": chat_id,
-        "text": text
-    }
-
-    if reply_markup:
-        data["reply_markup"] = reply_markup
-
-    return telegram("sendMessage", data)
-
-
-def edit_message(chat_id, message_id, text, reply_markup=None):
-    data = {
-        "chat_id": chat_id,
-        "message_id": message_id,
-        "text": text
-    }
-
-    if reply_markup:
-        data["reply_markup"] = reply_markup
-
-    return telegram("editMessageText", data)
-
-
-def handle_update(update):
-
-    if "message" in update:
-        message = update["message"]
-        chat_id = message["chat"]["id"]
-        text = message.get("text", "")
-
-        if text.startswith("/start"):
-            send_message(
-                chat_id,
-                "🌍 Tilni tanlang:",
-                language_keyboard()
-            )
-
-    elif "callback_query" in update:
-        callback = update["callback_query"]
-        data = callback["data"]
-        callback_id = callback["id"]
-        message = callback["message"]
-
-        chat_id = message["chat"]["id"]
-        message_id = message["message_id"]
-
-        if data.startswith("lang_"):
-            lang = data.replace("lang_", "")
-
-            if lang in TEXTS:
-                telegram(
-                    "answerCallbackQuery",
-                    {"callback_query_id": callback_id}
-                )
-
-                edit_message(
-                    chat_id,
-                    message_id,
-                    TEXTS[lang]["welcome"],
-                    main_keyboard(lang)
-                )
-
-
-def main():
-    offset = 0
-
-    print("Mafia Noir bot ishga tushdi...")
-
-    while True:
-        try:
-            result = telegram(
-                "getUpdates",
-                {
-                    "offset": offset,
-                    "timeout": 30
-                }
-            )
-
-            if not result.get("ok"):
-                continue
-
-            for update in result.get("result", []):
-                offset = update["update_id"] + 1
-
-                try:
-                    handle_update(update)
-                except Exception as e:
-                    print("Update xatosi:", e)
-
-        except Exception as e:
-            print("Bot xatosi:", e)
-
-
-if __name__ == "__main__":
-    main()
+def profile_text(user):
+    lines = [
+        "🕴

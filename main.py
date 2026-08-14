@@ -1,5 +1,4 @@
 import os
-
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes
 
@@ -8,11 +7,10 @@ TOKEN = os.getenv("BOT_TOKEN")
 
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    name = user.first_name or "Noma'lum"
 
-    text = f"""🕴️ • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •
+    profile_text = f"""🕴️ • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •
 
-👤 Ism: {name}
+👤 Ism: {user.first_name or "Noma'lum"}
 🆔 ID: {user.id}
 
 💵 Dollar: 0
@@ -34,7 +32,7 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 🃏 Faol rol: Yo‘q"""
 
-    keyboard = [
+    buttons = [
         [InlineKeyboardButton("💵 Dollar olish", callback_data="none")],
         [InlineKeyboardButton("💎 Olmos olish", callback_data="none")],
         [InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="none")],
@@ -44,20 +42,20 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     await update.message.reply_text(
-        text,
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        profile_text,
+        reply_markup=InlineKeyboardMarkup(buttons)
     )
 
 
 def main():
     if not TOKEN:
-        raise ValueError("BOT_TOKEN topilmadi!")
+        raise RuntimeError("BOT_TOKEN Secret topilmadi")
 
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("profile", profile))
 
-    app.run_polling()
+    app.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":

@@ -31,7 +31,7 @@ def profile_text(user):
         "🛡️ Geroydan himoya: 0\n\n"
         "🎯 G‘alabalar: 0\n"
         "🎲 Barcha o‘yinlar: 0\n"
-        "📊 G‘alaba foizi: 0%\n"
+        "📊 G‘alaba foizi: 0%\n\n"
         "🃏 Faol rol: Yo‘q"
     )
 
@@ -111,14 +111,16 @@ async def other_buttons(
 ):
     query = update.callback_query
 
-    await query.answer("Bu bo‘lim hozircha tayyorlanmoqda.")
+    # Hozircha tugmalar hech qanday amal bajarmaydi.
+    # Keyin bittalab ishga tushiramiz.
+    await query.answer()
 
 
 def main():
     if not TOKEN:
         raise RuntimeError(
-            "BOT_TOKEN topilmadi. GitHub Secrets ichida BOT_TOKEN "
-            "saqlanganini tekshiring."
+            "BOT_TOKEN topilmadi. GitHub Secrets ichida "
+            "BOT_TOKEN saqlanganini tekshiring."
         )
 
     app = Application.builder().token(TOKEN).build()
@@ -138,10 +140,13 @@ def main():
 
     # Qolgan tugmalar
     app.add_handler(
-        CallbackQueryHandler(other_buttons)
+        CallbackQueryHandler(
+            other_buttons
+        )
     )
 
     print("🤖 Bot ishga tushdi...")
+
     app.run_polling(
         drop_pending_updates=True
     )

@@ -1,5 +1,4 @@
 import os
-
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -12,159 +11,7 @@ TOKEN = os.getenv("BOT_TOKEN")
 
 
 # =========================
-# ROLLAR
-# =========================
-
-ROLES = {
-    "don": {
-        "name": "🎩 Don",
-        "team": "🎩 Mafia",
-        "task": "Mafia jamoasini boshqaradi va hujum nishonini tanlaydi.",
-        "win": "Mafia ustunlikka erishsa."
-    },
-    "mafia": {
-        "name": "🥷 Mafia",
-        "team": "🎩 Mafia",
-        "task": "Don bilan birga kechasi hujum qiladi.",
-        "win": "Mafia ustunlikka erishsa."
-    },
-    "killer": {
-        "name": "🔪 Qotil",
-        "team": "🏘️ Shahar",
-        "task": "Kechasi bir o‘yinchiga hujum qiladi.",
-        "win": "Barcha dushmanlar yo‘q qilinsa."
-    },
-    "commissioner": {
-        "name": "👮 Komissar",
-        "team": "🏘️ Shahar",
-        "task": "Kechasi bir o‘yinchini tekshiradi.",
-        "win": "Mafia yo‘q qilinsa."
-    },
-    "doctor": {
-        "name": "👨‍⚕️ Doktor",
-        "team": "🏘️ Shahar",
-        "task": "Kechasi bir o‘yinchini o‘limdan saqlaydi.",
-        "win": "Shahar g‘alaba qilsa."
-    },
-    "sergeant": {
-        "name": "👮‍♂️ Serjant",
-        "team": "🏘️ Shahar",
-        "task": "Komissarga yordam beradi va u o‘lsa, ishini davom ettiradi.",
-        "win": "Shahar g‘alaba qilsa."
-    },
-    "captain": {
-        "name": "🎖️ Kapitan",
-        "team": "🏘️ Shahar",
-        "task": "Ovoz berishda kuchliroq ovozga ega.",
-        "win": "Shahar g‘alaba qilsa."
-    },
-    "citizen": {
-        "name": "👤 Fuqaro",
-        "team": "🏘️ Shahar",
-        "task": "Kunduz ovoz beradi va Mafia'ni topishga yordam beradi.",
-        "win": "Barcha Mafia yo‘q qilinsa."
-    },
-    "vagabond": {
-        "name": "👣 Daydi",
-        "team": "🏘️ Shahar",
-        "task": "Bir o‘yinchini kuzatib, u kimning oldiga borganini biladi.",
-        "win": "Shahar g‘alaba qilsa."
-    },
-    "judge": {
-        "name": "⚖️ Sudya",
-        "team": "🏘️ Shahar",
-        "task": "Bir marta ovoz berishni bekor qilib, qayta ovoz beradi.",
-        "win": "Shahar g‘alaba qilsa."
-    },
-    "lawyer": {
-        "name": "👨‍⚖️ Advokat",
-        "team": "🏘️ Shahar",
-        "task": "Bir o‘yinchini himoya qiladi va tekshiruvni chalg‘itadi.",
-        "win": "Shahar g‘alaba qilsa."
-    },
-    "avenger": {
-        "name": "💀 Qasoskor",
-        "team": "🏘️ Shahar",
-        "task": "O‘ldirilsa, hujum qilgan odamdan qasos oladi.",
-        "win": "Shahar g‘alaba qilsa."
-    },
-    "chameleon": {
-        "name": "🦎 Buqalamun",
-        "team": "🏘️ Shahar",
-        "task": "Bir marta tekshiruvda boshqa rol sifatida ko‘rinadi.",
-        "win": "Shahar g‘alaba qilsa."
-    },
-    "observer": {
-        "name": "🕵️ Kuzatuvchi",
-        "team": "🏘️ Shahar",
-        "task": "Bir o‘yinchining kechasi nima qilganini kuzatadi.",
-        "win": "Mafia yo‘q qilinsa."
-    },
-    "bodyguard": {
-        "name": "🛡️ Bodyguard",
-        "team": "🏘️ Shahar",
-        "task": "Bir o‘yinchini himoya qiladi va hujumni o‘ziga oladi.",
-        "win": "Shahar g‘alaba qilsa."
-    },
-    "wizard": {
-        "name": "🧙 Sehrgar",
-        "team": "🏘️ Shahar",
-        "task": "Bir o‘yinchining qobiliyatini vaqtincha to‘xtatadi.",
-        "win": "Mafia yo‘q qilinsa."
-    },
-    "journalist": {
-        "name": "📰 Jurnalist",
-        "team": "🏘️ Shahar",
-        "task": "Ikki o‘yinchining bir jamoaga tegishli ekanini tekshiradi.",
-        "win": "Shahar g‘alaba qilsa."
-    },
-    "chemist": {
-        "name": "🔬 Kimyogar",
-        "team": "🏘️ Shahar",
-        "task": "Bir marta davolaydi va bir marta zaharlaydi.",
-        "win": "Shahar g‘alaba qilsa."
-    },
-    "miner": {
-        "name": "💣 Minyor",
-        "team": "🏘️ Shahar",
-        "task": "O‘ldirilsa, hujum qilgan odamni ham yo‘q qiladi.",
-        "win": "Shahar g‘alaba qilsa."
-    },
-    "warlock": {
-        "name": "⚡ Koldun",
-        "team": "🏘️ Shahar",
-        "task": "Bir o‘yinchining tungi harakatini boshqa nishonga yo‘naltiradi.",
-        "win": "Shahar g‘alaba qilsa."
-    },
-    "secret_agent": {
-        "name": "🕶️ Maxfiy agent",
-        "team": "🏘️ Shahar",
-        "task": "Bir o‘yinchining jamoasini yashirincha aniqlaydi.",
-        "win": "Mafia yo‘q qilinsa."
-    },
-    "ghost": {
-        "name": "👻 Arvoh",
-        "team": "🕊️ Neutral",
-        "task": "O‘lgandan keyin bir marta yashirincha yordam beradi.",
-        "win": "Maxsus shartini bajarsa."
-    },
-    "joker": {
-        "name": "🤡 Joker",
-        "team": "🕊️ Neutral",
-        "task": "Kunduzgi ovozda o‘zini o‘ldirtirishga harakat qiladi.",
-        "win": "Ovoz berib o‘ldirilsa."
-    },
-    "vampire": {
-        "name": "🧛 Vampir",
-        "team": "🕊️ Neutral",
-        "task": "Kechasi o‘yinchilarni vampir tomoniga o‘tkazadi.",
-        "win": "Vampirlar ustunlikka erishsa."
-    },
-}
-
-
-# =========================
-# PROFIL
+# PROFILE
 # =========================
 
 def get_profile_text(user):
@@ -202,77 +49,37 @@ def get_main_buttons():
 
 def get_profile_buttons():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("💵 Dollar olish", callback_data="dollar")],
-        [InlineKeyboardButton("💎 Olmos olish", callback_data="olmos")],
-        [InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="hero")],
-        [InlineKeyboardButton("💰 Do‘kon", callback_data="shop")],
-        [InlineKeyboardButton("📖 Buyumlar haqida", callback_data="items")],
-        [InlineKeyboardButton("🔙 Orqaga", callback_data="back")],
+        [InlineKeyboardButton("💵 Dollar olish", callback_data="profile_noop")],
+        [InlineKeyboardButton("💎 Olmos olish", callback_data="profile_noop")],
+        [InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="profile_noop")],
+        [InlineKeyboardButton("💰 Do‘kon", callback_data="profile_noop")],
+        [InlineKeyboardButton("📖 Buyumlar haqida", callback_data="profile_noop")],
+        [InlineKeyboardButton("🔙 Orqaga", callback_data="profile_noop")],
     ])
 
 
 # =========================
-# ROLES TUGMALARI
+# ROLES
 # =========================
 
 def get_roles_buttons():
-    keys = list(ROLES.keys())
-    rows = []
-
-    for i in range(0, len(keys), 2):
-        row = [
-            InlineKeyboardButton(
-                ROLES[keys[i]]["name"],
-                callback_data=f"role_{keys[i]}"
-            )
-        ]
-
-        if i + 1 < len(keys):
-            row.append(
-                InlineKeyboardButton(
-                    ROLES[keys[i + 1]]["name"],
-                    callback_data=f"role_{keys[i + 1]}"
-                )
-            )
-
-        rows.append(row)
-
-    return InlineKeyboardMarkup(rows)
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🕵️ Detektiv", callback_data="role_detective")],
+        [InlineKeyboardButton("🔫 Mafia", callback_data="role_mafia")],
+        [InlineKeyboardButton("👨‍⚕️ Doktor", callback_data="role_doctor")],
+        [InlineKeyboardButton("👤 Fuqaro", callback_data="role_citizen")],
+        [InlineKeyboardButton("🎯 Vazifa", callback_data="role_task")],
+        [InlineKeyboardButton("👥 Jamoa", callback_data="role_team")],
+        [InlineKeyboardButton("🏆 G‘alaba", callback_data="role_win")],
+    ])
 
 
 async def roles(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🎭 **Mafia Noir — Rollar**\n\n"
-        "Kerakli rolni tanlang:",
-        reply_markup=get_roles_buttons(),
-        parse_mode="Markdown"
+        "🎭 • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 𝑹𝒐𝒍𝒍𝒂𝒓 •\n\n"
+        "Quyidagi roldan birini tanlang:",
+        reply_markup=get_roles_buttons()
     )
-
-
-# =========================
-# ROLE POPUP
-# =========================
-
-async def role_popup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-
-    role_key = query.data.replace("role_", "", 1)
-    role = ROLES.get(role_key)
-
-    if not role:
-        await query.answer("Rol topilmadi.")
-        return
-
-    text = (
-        f"{role['name']}\n\n"
-        f"📌 Vazifasi:\n{role['task']}\n\n"
-        f"👥 Jamoasi: {role['team']}\n\n"
-        f"🏆 G‘alaba siri:\n{role['win']}"
-    )
-
-    # Yangi xabar kelmaydi.
-    # Ma'lumot Telegram popupida chiqadi.
-    await query.answer(text, show_alert=True)
 
 
 # =========================
@@ -290,6 +97,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+# =========================
+# PROFILE COMMAND
+# =========================
+
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
 
@@ -298,6 +109,10 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=get_profile_buttons()
     )
 
+
+# =========================
+# PROFILE BUTTON
+# =========================
 
 async def profile_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -313,12 +128,95 @@ async def profile_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # =========================
-# ASOSIY TUGMALAR
+# PROFILE ICHIDAGI TUGMALAR
+# HECH NIMA QILMAYDI
+# =========================
+
+async def profile_noop(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+
+    # Faqat loadingni yopadi.
+    # Hech qanday xabar, oyna yoki amal qilmaydi.
+    await query.answer()
+
+
+# =========================
+# ROLES BUTTONLARI
+# =========================
+
+async def roles_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    data = query.data
+
+    if data == "role_detective":
+        text = (
+            "🕵️ DETEKTIV\n\n"
+            "🔎 Vazifasi: shubhali o‘yinchilarni aniqlash.\n"
+            "👥 Jamoasi: Tinch aholi.\n"
+            "🏆 G‘alabasi: Mafia yo‘q qilinganda."
+        )
+
+    elif data == "role_mafia":
+        text = (
+            "🔫 MAFIA\n\n"
+            "🎯 Vazifasi: tinch aholini yo‘q qilish.\n"
+            "👥 Jamoasi: Mafia.\n"
+            "🏆 G‘alabasi: Mafia soni ustun kelganda."
+        )
+
+    elif data == "role_doctor":
+        text = (
+            "👨‍⚕️ DOKTOR\n\n"
+            "🩺 Vazifasi: o‘yinchilarni himoya qilish.\n"
+            "👥 Jamoasi: Tinch aholi.\n"
+            "🏆 G‘alabasi: Tinch aholi g‘alaba qilganda."
+        )
+
+    elif data == "role_citizen":
+        text = (
+            "👤 FUQARO\n\n"
+            "🎯 Vazifasi: Mafia kimligini aniqlash.\n"
+            "👥 Jamoasi: Tinch aholi.\n"
+            "🏆 G‘alabasi: Mafia yo‘q qilinganda."
+        )
+
+    elif data == "role_task":
+        text = (
+            "🎯 VAZIFA\n\n"
+            "Har bir rolning o‘ziga xos vazifasi mavjud."
+        )
+
+    elif data == "role_team":
+        text = (
+            "👥 JAMOA\n\n"
+            "Tinch aholi va Mafia o‘z jamoasi bilan g‘alaba "
+            "qozonishga harakat qiladi."
+        )
+
+    elif data == "role_win":
+        text = (
+            "🏆 G‘ALABA\n\n"
+            "Har bir rol o‘z jamoasi bilan belgilangan shartni "
+            "bajarganda g‘alaba qozonadi."
+        )
+
+    else:
+        return
+
+    await query.message.edit_text(
+        text,
+        reply_markup=get_roles_buttons()
+    )
+
+
+# =========================
+# MAIN BUTTONS
 # =========================
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-
     await query.answer()
 
     user = query.from_user
@@ -384,6 +282,7 @@ def main():
     app.add_handler(CommandHandler("profile", profile))
     app.add_handler(CommandHandler("roles", roles))
 
+    # Profile ochish
     app.add_handler(
         CallbackQueryHandler(
             profile_button,
@@ -391,15 +290,29 @@ def main():
         )
     )
 
+    # Profile ichidagi tugmalar — HECH NIMA QILMAYDI
     app.add_handler(
         CallbackQueryHandler(
-            role_popup,
+            profile_noop,
+            pattern="^profile_noop$"
+        )
+    )
+
+    # Roles tugmalari
+    app.add_handler(
+        CallbackQueryHandler(
+            roles_button,
             pattern="^role_"
         )
     )
 
+    # Qolgan asosiy tugmalar
     app.add_handler(
         CallbackQueryHandler(button_handler)
     )
 
     app.run_polling(drop_pending_updates=True)
+
+
+if __name__ == "__main__":
+    main()

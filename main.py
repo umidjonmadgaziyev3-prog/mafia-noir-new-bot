@@ -15,12 +15,14 @@ TOKEN = os.getenv("BOT_TOKEN")
 # =========================
 
 def get_profile_text(user):
-    return f"""🕴️ • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •
+    return f""" • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •
 
 👤 Ism: {user.first_name or "Noma'lum"}
 🆔 ID: {user.id}
+
 💵 Dollar: 0
 💎 Olmos: 0
+
 🛡 Qora qalqon: 0
 📜 Soxta hujjat: 0
 ⚖️ Afv tamg‘asi: 0
@@ -30,9 +32,11 @@ def get_profile_text(user):
 🧪 Verbena ekstrakti: 0
 🥷 Sirli niqob: 0
 🛡️ Geroydan himoya: 0
+
 🎯 G‘alabalar: 0
 🎲 Barcha o‘yinlar: 0
-📊 G‘alaba foizi: 0%
+📊 G‘alaba foizi: 0
+
 🃏 Faol rol: Yo‘q"""
 
 

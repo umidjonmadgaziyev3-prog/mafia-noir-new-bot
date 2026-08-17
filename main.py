@@ -40,17 +40,6 @@ def get_profile_text(user):
 🃏 Faol rol: Yo‘q"""
 
 
-def get_main_buttons():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("👤 Profil", callback_data="profile")],
-        [InlineKeyboardButton("💵 Dollar", callback_data="dollar")],
-        [InlineKeyboardButton("💎 Olmos", callback_data="olmos")],
-        [InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="hero")],
-        [InlineKeyboardButton("💰 Do‘kon", callback_data="shop")],
-        [InlineKeyboardButton("📖 Buyumlar haqida", callback_data="items")],
-    ])
-
-
 def get_profile_buttons():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("💵 Dollar olish", callback_data="profile_noop")],
@@ -58,7 +47,7 @@ def get_profile_buttons():
         [InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="profile_noop")],
         [InlineKeyboardButton("💰 Do‘kon", callback_data="profile_noop")],
         [InlineKeyboardButton("📖 Buyumlar haqida", callback_data="profile_noop")],
-        [InlineKeyboardButton("🔙 Orqaga", callback_data="profile_noop")],
+        [InlineKeyboardButton("🔻", callback_data="profile_noop")],
     ])
 
 

@@ -11,6 +11,32 @@ TOKEN = os.getenv("BOT_TOKEN")
 
 
 # =========================
+# MAIN BUTTONS
+# =========================
+
+def get_main_buttons():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("👤 Profile", callback_data="profile")
+        ],
+        [
+            InlineKeyboardButton("🎭 Roles", callback_data="roles")
+        ],
+        [
+            InlineKeyboardButton("💵 Dollar", callback_data="dollar"),
+            InlineKeyboardButton("💎 Olmos", callback_data="olmos")
+        ],
+        [
+            InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="hero"),
+            InlineKeyboardButton("💰 Do‘kon", callback_data="shop")
+        ],
+        [
+            InlineKeyboardButton("📖 Buyumlar haqida", callback_data="items")
+        ]
+    ])
+
+
+# =========================
 # PROFILE
 # =========================
 
@@ -52,7 +78,7 @@ def get_profile_buttons():
 
 
 # =========================
-# 25 TA ROL
+# ROLES
 # =========================
 
 ROLES = [
@@ -109,19 +135,7 @@ def get_roles_buttons():
 
 
 # =========================
-# /ROLES
-# =========================
-
-async def roles(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🎭 • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 𝑹𝒐𝒍𝒍𝒂𝒓 •\n\n"
-        "Kerakli rolni tanlang:",
-        reply_markup=get_roles_buttons()
-    )
-
-
-# =========================
-# START
+# /START
 # =========================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -136,7 +150,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # =========================
-# PROFILE COMMAND
+# /ROLES
+# =========================
+
+async def roles(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🎭 • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 𝑹𝒐𝒍𝒍𝒂𝒓 •\n\n"
+        "Kerakli rolni tanlang:",
+        reply_markup=get_roles_buttons()
+    )
+
+
+# =========================
+# /PROFILE
 # =========================
 
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -165,8 +191,7 @@ async def profile_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # =========================
-# PROFILE ICHIDAGI TUGMALAR
-# HOZIRCHA HECH NIMA QILMAYDI
+# PROFILE BUTTONS — NOOP
 # =========================
 
 async def profile_noop(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -174,8 +199,7 @@ async def profile_noop(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # =========================
-# ROLE TUGMALARI
-# HOZIRCHA HECH NIMA QILMAYDI
+# ROLE BUTTONS — NOOP
 # =========================
 
 async def roles_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -183,7 +207,7 @@ async def roles_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # =========================
-# ASOSIY TUGMALAR
+# MAIN BUTTONS
 # =========================
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -193,27 +217,37 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = query.from_user
     data = query.data
 
-    if data == "back":
+    if data == "profile":
         await query.message.edit_text(
-            f"🕴️ Salom, {user.first_name or 'o‘yinchi'}!\n\n"
-            "🌃 Mafia Noir menyusi:",
-            reply_markup=get_main_buttons()
+            get_profile_text(user),
+            reply_markup=get_profile_buttons()
         )
+
+    elif data == "roles":
+        await query.message.edit_text(
+            "🎭 • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 𝑹𝒐𝒍𝒍𝒂𝒓 •\n\n"
+            "Kerakli rolni tanlang:",
+            reply_markup=get_roles_buttons()
+        )
+
     elif data == "dollar":
         await query.message.reply_text(
             "💵 Dollar bo‘limi\n\n"
             "Hozircha balans: 0 $"
         )
+
     elif data == "olmos":
         await query.message.reply_text(
             "💎 Olmos bo‘limi\n\n"
             "Hozircha balans: 0 💎"
         )
+
     elif data == "hero":
         await query.message.reply_text(
             "⚔️ Mening Geroyim\n\n"
             "Hozircha geroyingiz mavjud emas."
         )
+
     elif data == "shop":
         await query.message.reply_text(
             "💰 Do‘kon\n\n"
@@ -223,6 +257,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🩸 Qotil niqobi\n"
             "🔫 Noir miltig‘i"
         )
+
     elif data == "items":
         await query.message.reply_text(
             "📖 Buyumlar haqida\n\n"
@@ -273,9 +308,10 @@ def main():
         CallbackQueryHandler(button_handler)
     )
 
-app.run_polling(
-    drop_pending_updates=True,
-    allowed_updates=Update.ALL_TYPES
+    # MUHIM: polling main() ICHIDA
+    app.run_polling(
+        drop_pending_updates=True,
+        allowed_updates=Update.ALL_TYPES
     )
 
 

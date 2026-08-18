@@ -3,12 +3,7 @@ import json
 from pathlib import Path
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-)
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 TOKEN = os.getenv("BOT_TOKEN")
 DATA_FILE = Path("data.json")
@@ -64,28 +59,25 @@ def get_user_data(user_id):
         data[uid] = {
             "dollar": 0,
             "diamond": 0,
-            "vip": user_id == OWNER_ID,
             "hero": 0,
+            "hero_level": 1,
+            "hero_xp": 0,
+            "hero_wins": 0,
+            "hero_games": 0,
             "active_role": 0,
-            "items": {
-                key: 0
-                for key in ITEMS
-                if key not in ("hero", "active_role")
-            },
-            "active_items": {
-                key: False
-                for key in ITEMS
-                if key not in ("hero", "active_role")
-            },
+            "items": {},
+            "active_items": {},
         }
-        save_data(data)
 
     user = data[uid]
 
     user.setdefault("dollar", 0)
     user.setdefault("diamond", 0)
-    user["vip"] = user_id == OWNER_ID
     user.setdefault("hero", 0)
+    user.setdefault("hero_level", 1)
+    user.setdefault("hero_xp", 0)
+    user.setdefault("hero_wins", 0)
+    user.setdefault("hero_games", 0)
     user.setdefault("active_role", 0)
     user.setdefault("items", {})
     user.setdefault("active_items", {})
@@ -97,6 +89,10 @@ def get_user_data(user_id):
 
     save_data(data)
     return data, user
+
+
+def is_owner(user_id):
+    return user_id == OWNER_ID
 
 
 # =========================
@@ -164,15 +160,20 @@ async def language_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def get_profile_text(user):
     _, u = get_user_data(user.id)
 
-    vip_line = "\n👑 VIP: Ha" if u["vip"] else ""
+    if is_owner(user.id):
+        dollar = "∞"
+        diamond = "∞"
+    else:
+        dollar = str(u["dollar"])
+        diamond = str(u["diamond"])
 
     return f""" • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •
 
 👤 Ism: {user.first_name or "Noma'lum"}
-🆔 ID: {user.id}{vip_line}
+🆔 ID: {user.id}
 
-💵 Dollar: {u["dollar"]}
-💎 Olmos: {u["diamond"]}
+💵 Dollar: {dollar}
+💎 Olmos: {diamond}
 
 🛡 Qora qalqon: {u["items"]["shield"]}
 📜 Soxta hujjat: {u["items"]["document"]}
@@ -184,12 +185,12 @@ def get_profile_text(user):
 🥷 Sirli niqob: {u["items"]["mystery_mask"]}
 🛡️ Geroydan himoya: {u["items"]["hero_protection"]}
 
-⚔️ Geroy: {"Bor" if u["hero"] > 0 else "Yo‘q"}
-🃏 Faol rol: {"Bor" if u["active_role"] > 0 else "Yo‘q"}
+⚔️ Geroy: {"Bor" if u["hero"] else "Yo‘q"}
+🃏 Faol rol: {"Bor" if u["active_role"] else "Yo‘q"}
 
 🎯 G‘alabalar: 0
 🎲 Barcha o‘yinlar: 0
-📊 G‘alaba foizi: 0"""
+📊 G‘alaba foizi: 0%"""
 
 
 def get_profile_buttons():
@@ -204,7 +205,7 @@ def get_profile_buttons():
         )],
         [InlineKeyboardButton(
             "⚔️ Mening Geroyim",
-            callback_data="hero"
+            callback_data="hero_profile"
         )],
         [InlineKeyboardButton(
             "💰 Do‘kon",
@@ -229,7 +230,7 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # =========================
-# DOLLAR OLISH
+# DOLLAR
 # =========================
 
 DOLLAR_PACKAGES = [
@@ -242,35 +243,28 @@ DOLLAR_PACKAGES = [
 ]
 
 
-def get_dollar_buttons():
-    keyboard = []
+async def dollar_exchange(update, context):
+    query = update.callback_query
+    await query.answer()
+
+    buttons = []
 
     for diamond, dollar in DOLLAR_PACKAGES:
-        keyboard.append([
+        buttons.append([
             InlineKeyboardButton(
                 f"💎 {diamond} → 💵 {dollar}",
                 callback_data=f"exchange_{diamond}"
             )
         ])
 
-    keyboard.append([
-        InlineKeyboardButton(
-            "🔙 Orqaga",
-            callback_data="profile"
-        )
+    buttons.append([
+        InlineKeyboardButton("🔙 Orqaga", callback_data="profile")
     ])
-
-    return InlineKeyboardMarkup(keyboard)
-
-
-async def dollar_exchange(update, context):
-    query = update.callback_query
-    await query.answer()
 
     await query.message.edit_text(
         "💵 • 𝑫𝒐𝒍𝒍𝒂𝒓 𝒐𝒍𝒊𝒔𝒉 •\n\n"
         "Olmosni Dollarga almashtiring:",
-        reply_markup=get_dollar_buttons()
+        reply_markup=InlineKeyboardMarkup(buttons)
     )
 
 
@@ -280,19 +274,20 @@ async def exchange_dollar(update, context):
 
     data, u = get_user_data(query.from_user.id)
 
-    if u["diamond"] < amount:
-        await query.answer(
-            "❌ Olmos yetarli emas",
-            show_alert=True
-        )
-        return
+    if not is_owner(query.from_user.id):
+        if u["diamond"] < amount:
+            await query.answer(
+                "❌ Olmos yetarli emas",
+                show_alert=True
+            )
+            return
 
-    u["diamond"] -= amount
-    u["dollar"] += amount * 600
+        u["diamond"] -= amount
+        u["dollar"] += amount * 600
 
-    save_data(data)
+        save_data(data)
 
-    await query.answer("✅ Savdo muvaffaqiyatli amalga oshirildi!")
+    await query.answer("✅ Muvaffaqiyatli!")
 
     await query.message.edit_text(
         get_profile_text(query.from_user),
@@ -314,35 +309,28 @@ DIAMOND_PACKAGES = [
 ]
 
 
-def get_diamond_buttons():
-    keyboard = []
+async def diamond_buy(update, context):
+    query = update.callback_query
+    await query.answer()
+
+    buttons = []
 
     for amount, price in DIAMOND_PACKAGES:
-        keyboard.append([
+        buttons.append([
             InlineKeyboardButton(
                 f"💎 {amount} ta — {price:,} so‘m".replace(",", " "),
                 url=f"https://t.me/{OWNER_USERNAME}"
             )
         ])
 
-    keyboard.append([
-        InlineKeyboardButton(
-            "🔙 Orqaga",
-            callback_data="profile"
-        )
+    buttons.append([
+        InlineKeyboardButton("🔙 Orqaga", callback_data="profile")
     ])
-
-    return InlineKeyboardMarkup(keyboard)
-
-
-async def diamond_buy(update, context):
-    query = update.callback_query
-    await query.answer()
 
     await query.message.edit_text(
         "💎 • 𝑶𝒍𝒎𝒐𝒔 𝒐𝒍𝒊𝒔𝒉 •\n\n"
         "Kerakli paketni tanlang:",
-        reply_markup=get_diamond_buttons()
+        reply_markup=InlineKeyboardMarkup(buttons)
     )
 
 
@@ -350,37 +338,30 @@ async def diamond_buy(update, context):
 # DO‘KON
 # =========================
 
-def get_shop_buttons():
-    keyboard = []
+async def shop(update, context):
+    query = update.callback_query
+    await query.answer()
+
+    buttons = []
 
     for key, (name, price, currency) in ITEMS.items():
         emoji = "💵" if currency == "dollar" else "💎"
 
-        keyboard.append([
+        buttons.append([
             InlineKeyboardButton(
                 f"{name} — {emoji} {price}",
                 callback_data=f"buy_{key}"
             )
         ])
 
-    keyboard.append([
-        InlineKeyboardButton(
-            "🔙 Orqaga",
-            callback_data="profile"
-        )
+    buttons.append([
+        InlineKeyboardButton("🔙 Orqaga", callback_data="profile")
     ])
-
-    return InlineKeyboardMarkup(keyboard)
-
-
-async def shop(update, context):
-    query = update.callback_query
-    await query.answer()
 
     await query.message.edit_text(
         "💰 • 𝑫𝒐‘𝒌𝒐𝒏 •\n\n"
         "Kerakli buyumni tanlang:",
-        reply_markup=get_shop_buttons()
+        reply_markup=InlineKeyboardMarkup(buttons)
     )
 
 
@@ -396,25 +377,26 @@ async def buy_item(update, context):
 
     data, u = get_user_data(query.from_user.id)
 
-    if currency == "dollar":
-        if u["dollar"] < price:
-            await query.answer(
-                "❌ Mablag‘ yetarli emas",
-                show_alert=True
-            )
-            return
+    owner = is_owner(query.from_user.id)
 
-        u["dollar"] -= price
+    if not owner:
+        if currency == "dollar":
+            if u["dollar"] < price:
+                await query.answer(
+                    "❌ Dollar yetarli emas",
+                    show_alert=True
+                )
+                return
+            u["dollar"] -= price
 
-    else:
-        if u["diamond"] < price:
-            await query.answer(
-                "❌ Mablag‘ yetarli emas",
-                show_alert=True
-            )
-            return
-
-        u["diamond"] -= price
+        else:
+            if u["diamond"] < price:
+                await query.answer(
+                    "❌ Olmos yetarli emas",
+                    show_alert=True
+                )
+                return
+            u["diamond"] -= price
 
     if key == "hero":
         u["hero"] += 1
@@ -427,309 +409,61 @@ async def buy_item(update, context):
 
     save_data(data)
 
-    await query.answer("✅ Xarid muvaffaqiyatli amalga oshirildi!")
+    await query.answer("✅ Xarid qilindi!")
 
     await query.message.edit_text(
         "💰 • 𝑫𝒐‘𝒌𝒐𝒏 •\n\n"
-        "✅ Xarid muvaffaqiyatli amalga oshirildi.\n\n"
+        f"✅ {name} olindi.\n\n"
         "Yana buyum tanlang:",
-        reply_markup=get_shop_buttons()
+        reply_markup=InlineKeyboardMarkup([
+            *[
+                [InlineKeyboardButton(
+                    f"{n} — {'💵' if c == 'dollar' else '💎'} {p}",
+                    callback_data=f"buy_{k}"
+                )]
+                for k, (n, p, c) in ITEMS.items()
+            ],
+            [InlineKeyboardButton(
+                "🔙 Orqaga",
+                callback_data="profile"
+            )]
+        ])
     )
 
 
 # =========================
-# BUYUMLAR HAQIDA
+# GEROY PROFILI
 # =========================
 
-DESCRIPTIONS = {
-    "shield": "bir marta hujumdan himoya qiladi.",
-    "document": "tekshiruvda rolni yashirishga yordam beradi.",
-    "forgiveness": "bir marta jazodan qutqaradi.",
-    "killer_mask": "qotilni aniqlashni qiyinlashtiradi.",
-    "gun": "bir marta hujum qilish imkonini beradi.",
-    "black_medicine": "salbiy ta’sirni olib tashlaydi.",
-    "verbena": "vampirdan himoya qiladi.",
-    "mystery_mask": "rolni vaqtincha yashiradi.",
-    "hero_protection": "geroy hujumidan bir marta himoya qiladi.",
-    "hero": "sotib olingandan keyin sizga Geroy beriladi.",
-    "active_role": "1 ta o‘yin uchun tasodifiy faol rol beradi.",
+XP_REQUIREMENTS = {
+    1: 150,
+    2: 300,
+    3: 700,
+    4: 1300,
 }
 
 
-async def items_info(update, context):
-    query = update.callback_query
-    await query.answer()
+def hero_profile_text(u):
+    if not u["hero"]:
+        return "⚔️ Sizda Geroy yo‘q."
 
-    text = "📖 • 𝑩𝒖𝒚𝒖𝒎𝒍𝒂𝒓 𝒉𝒂𝒒𝒊𝒅𝒂 •\n\n"
+    level = u["hero_level"]
+    xp = u["hero_xp"]
 
-    for key, (name, _, _) in ITEMS.items():
-        text += f"{name} — {DESCRIPTIONS[key]}\n"
-
-    await query.message.edit_text(
-        text,
-        reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "🔙 Orqaga",
-                    callback_data="profile"
-                )
-            ]
-        ])
-    )
-
-
-# =========================
-# ON / OFF
-# =========================
-
-def get_control_buttons(u):
-    keyboard = []
-
-    for key, (name, _, _) in ITEMS.items():
-        if key in ("hero", "active_role"):
-            continue
-
-        count = u["items"][key]
-        active = u["active_items"][key]
-
-        status = "⚪ OFF | 🟢 ON" if active else "⚪ OFF | ON"
-
-        keyboard.append([
-            InlineKeyboardButton(
-                f"{name} — {count}",
-                callback_data=f"noop_{key}"
-            )
-        ])
-
-        keyboard.append([
-            InlineKeyboardButton(
-                status,
-                callback_data=f"toggle_{key}"
-            )
-        ])
-
-    keyboard.append([
-        InlineKeyboardButton(
-            "🔙 Orqaga",
-            callback_data="profile"
-        )
-    ])
-
-    return InlineKeyboardMarkup(keyboard)
-
-
-async def item_control(update, context):
-    query = update.callback_query
-    await query.answer()
-
-    _, u = get_user_data(query.from_user.id)
-
-    await query.message.edit_text(
-        "🔻 • 𝑩𝒖𝒚𝒖𝒎𝒍𝒂𝒓𝒏𝒊 𝒃𝒐𝒔𝒉𝒒𝒂𝒓𝒊𝒔𝒉 •\n\n"
-        "Buyumni ON yoki OFF holatiga o‘tkazing.",
-        reply_markup=get_control_buttons(u)
-    )
-
-
-async def toggle_item(update, context):
-    query = update.callback_query
-    key = query.data.replace("toggle_", "", 1)
-
-    data, u = get_user_data(query.from_user.id)
-
-    if u["items"][key] <= 0:
-        await query.answer(
-            "❌ Bu buyum sizda mavjud emas",
-            show_alert=True
-        )
-        return
-
-    u["active_items"][key] = not u["active_items"][key]
-
-    save_data(data)
-
-    await query.answer()
-
-    await query.message.edit_text(
-        "🔻 • 𝑩𝒖𝒚𝒖𝒎𝒍𝒂𝒓𝒏𝒊 𝒃𝒐𝒔𝒉𝒒𝒂𝒓𝒊𝒔𝒉 •\n\n"
-        "Buyumni ON yoki OFF holatiga o‘tkazing.",
-        reply_markup=get_control_buttons(u)
-    )
-
-
-# =========================
-# HERO — HOZIRCHA
-# =========================
-
-async def hero(update, context):
-    query = update.callback_query
-    await query.answer()
-
-    _, u = get_user_data(query.from_user.id)
-
-    await query.message.edit_text(
-        "⚔️ • 𝑴𝒆𝒏𝒊𝒏𝒈 𝑮𝒆𝒓𝒐𝒚𝒊𝒎 •\n\n"
-        f"Geroylar: {u['hero']}\n\n"
-        "Geroyning maxsus mexanizmi keyin qo‘shiladi.",
-        reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "🔙 Orqaga",
-                    callback_data="profile"
-                )
-            ]
-        ])
-    )
-
-
-# =========================
-# ROLES
-# =========================
-
-ROLES = [
-    ("🎩 Don", "role_don"),
-    ("🥷 Mafia", "role_mafia"),
-    ("🎭 Aferist", "role_aferist"),
-    ("🔪 Qotil", "role_qotil"),
-    ("👮 Komissar", "role_komissar"),
-    ("👨‍⚕️ Doktor", "role_doktor"),
-    ("👮‍♂️ Serjant", "role_serjant"),
-    ("🎖️ Kapitan", "role_kapitan"),
-    ("👤 Fuqaro", "role_fuqaro"),
-    ("👣 Daydi", "role_daydi"),
-    ("⚖️ Sudya", "role_sudya"),
-    ("👨‍⚖️ Advokat", "role_advokat"),
-    ("💀 Qasoskor", "role_qasoskor"),
-    ("🦎 Buqalamun", "role_buqalamun"),
-    ("🕵️ Kuzatuvchi", "role_kuzatuvchi"),
-    ("🛡️ Bodyguard", "role_bodyguard"),
-    ("🧙 Sehrgar", "role_sehrgar"),
-    ("📰 Jurnalist", "role_jurnalist"),
-    ("🔬 Kimyogar", "role_kimyogar"),
-    ("💣 Minyor", "role_minyor"),
-    ("⚡ Koldun", "role_koldun"),
-    ("🕶️ Maxfiy agent", "role_agent"),
-    ("👻 Arvoh", "role_arvoh"),
-    ("🤡 Joker", "role_joker"),
-    ("🧛 Vampir", "role_vampir"),
-]
-
-
-def get_roles_buttons():
-    keyboard = []
-
-    for i in range(0, len(ROLES), 2):
-        row = [
-            InlineKeyboardButton(
-                ROLES[i][0],
-                callback_data=ROLES[i][1]
-            )
-        ]
-
-        if i + 1 < len(ROLES):
-            row.append(
-                InlineKeyboardButton(
-                    ROLES[i + 1][0],
-                    callback_data=ROLES[i + 1][1]
-                )
-            )
-
-        keyboard.append(row)
-
-    return InlineKeyboardMarkup(keyboard)
-
-
-async def roles(update, context):
-    await update.message.reply_text(
-        "🎭 • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 𝑹𝒐𝒍𝒍𝒂𝒓 •\n\n"
-        "Kerakli rolni tanlang:",
-        reply_markup=get_roles_buttons()
-    )
-
-
-async def role_button(update, context):
-    await update.callback_query.answer()
-
-
-# =========================
-# CALLBACK
-# =========================
-
-async def callback_handler(update, context):
-    query = update.callback_query
-    data = query.data
-
-    if data.startswith("lang_"):
-        await language_button(update, context)
-
-    elif data == "profile":
-        await query.answer()
-
-        await query.message.edit_text(
-            get_profile_text(query.from_user),
-            reply_markup=get_profile_buttons()
-        )
-
-    elif data == "dollar_exchange":
-        await dollar_exchange(update, context)
-
-    elif data.startswith("exchange_"):
-        await exchange_dollar(update, context)
-
-    elif data == "diamond_buy":
-        await diamond_buy(update, context)
-
-    elif data == "shop":
-        await shop(update, context)
-
-    elif data.startswith("buy_"):
-        await buy_item(update, context)
-
-    elif data == "items_info":
-        await items_info(update, context)
-
-    elif data == "item_control":
-        await item_control(update, context)
-
-    elif data.startswith("toggle_"):
-        await toggle_item(update, context)
-
-    elif data.startswith("noop_"):
-        await query.answer()
-
-    elif data == "hero":
-        await hero(update, context)
-
-    elif data.startswith("role_"):
-        await role_button(update, context)
-
+    if level < 5:
+        next_xp = XP_REQUIREMENTS[level]
+        xp_text = f"{xp} / {next_xp}"
+        next_text = f"{next_xp - xp} XP qoldi"
     else:
-        await query.answer()
+        xp_text = f"{xp} XP"
+        next_text = "Maksimal daraja"
 
+    abilities = [
+        f"⚔️ Hujum: {'✅' if level >= 1 else '🔒'}",
+        f"🛡️ Himoya: {'✅' if level >= 2 else '🔒'}",
+        f"🪖 Zirh: {'✅' if level >= 3 else '🔒'}",
+        f"🩸 Qasos: {'✅' if level >= 4 else '🔒'}",
+        f"💀 O‘lmaslik: {'✅' if level >= 5 else '🔒'}",
+    ]
 
-# =========================
-# MAIN
-# =========================
-
-def main():
-    if not TOKEN:
-        raise RuntimeError("BOT_TOKEN Secret topilmadi")
-
-    app = Application.builder().token(TOKEN).build()
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("profile", profile))
-    app.add_handler(CommandHandler("roles", roles))
-
-    app.add_handler(
-        CallbackQueryHandler(callback_handler)
-    )
-
-    app.run_polling(
-        drop_pending_updates=True,
-        allowed_updates=Update.ALL_TYPES
-    )
-
-
-if __name__ == "__main__":
-    main()
+    return f"""⚔️ • 𝑴𝒆𝒏𝒊𝒏𝒈 𝑮𝒆𝒓𝒐𝒚𝒊𝒎 •

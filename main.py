@@ -11,28 +11,45 @@ TOKEN = os.getenv("BOT_TOKEN")
 
 
 # =========================
-# MAIN BUTTONS
+# START — TIL TANLASH
+# =========================
+
+def get_language_buttons():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🇺🇿 O‘zbekcha", callback_data="lang_uz")],
+        [InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru")],
+        [InlineKeyboardButton("🇹🇷 Türkçe", callback_data="lang_tr")],
+        [InlineKeyboardButton("🇰🇿 Қазақша", callback_data="lang_kk")],
+        [InlineKeyboardButton("🇺🇦 Українська", callback_data="lang_uk")],
+        [InlineKeyboardButton("🇩🇪 Deutsch", callback_data="lang_de")],
+        [InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")],
+    ])
+
+
+# =========================
+# START — ASOSIY TUGMALAR
 # =========================
 
 def get_main_buttons():
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("👤 Profile", callback_data="profile")
+            InlineKeyboardButton(
+                "Owner 🎩",
+                url="https://t.me/Umarov_uuu"
+            )
         ],
         [
-            InlineKeyboardButton("🎭 Roles", callback_data="roles")
+            InlineKeyboardButton(
+                "Asosiy guruh 👥",
+                url="https://t.me/+0eXijyVhioY4ZDMy"
+            )
         ],
         [
-            InlineKeyboardButton("💵 Dollar", callback_data="dollar"),
-            InlineKeyboardButton("💎 Olmos", callback_data="olmos")
+            InlineKeyboardButton(
+                "Guruhga qo‘shish ➕",
+                url="https://t.me/Noiruzbot?startgroup=true"
+            )
         ],
-        [
-            InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="hero"),
-            InlineKeyboardButton("💰 Do‘kon", callback_data="shop")
-        ],
-        [
-            InlineKeyboardButton("📖 Buyumlar haqida", callback_data="items")
-        ]
     ])
 
 
@@ -139,12 +156,24 @@ def get_roles_buttons():
 # =========================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-
     await update.message.reply_text(
-        f"🕴️ Salom, {user.first_name or 'o‘yinchi'}!\n\n"
-        "🌃 Mafia Noir'ga xush kelibsiz.\n\n"
-        "Kerakli bo‘limni tanlang:",
+        "🌍 Tilni tanlang:",
+        reply_markup=get_language_buttons()
+    )
+
+
+# =========================
+# TIL TANLANGANDAN KEYIN
+# =========================
+
+async def language_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    await query.message.edit_text(
+        "🖤 Salom! Xush kelibsiz!\n\n"
+        "🌃 Men Mafia Noir botiman. Mafia o‘ynash uchun "
+        "meni guruhingizga qo‘shing.",
         reply_markup=get_main_buttons()
     )
 
@@ -283,6 +312,14 @@ def main():
     app.add_handler(CommandHandler("profile", profile))
     app.add_handler(CommandHandler("roles", roles))
 
+    # 7 ta til
+    app.add_handler(
+        CallbackQueryHandler(
+            language_button,
+            pattern="^lang_"
+        )
+    )
+
     app.add_handler(
         CallbackQueryHandler(
             profile_button,
@@ -308,7 +345,6 @@ def main():
         CallbackQueryHandler(button_handler)
     )
 
-    # MUHIM: polling main() ICHIDA
     app.run_polling(
         drop_pending_updates=True,
         allowed_updates=Update.ALL_TYPES

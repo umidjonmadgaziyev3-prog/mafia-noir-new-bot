@@ -26,6 +26,9 @@ OWNER_ID = 8402159260
 OWNER_USERNAME = "Umarov_uuu"
 BOT_USERNAME = "Noiruzbot"
 
+
+# ======================= BUYUMLAR =======================
+
 ITEMS = {
     "shield": ("🛡 Qora qalqon", 200, "dollar"),
     "document": ("📜 Soxta hujjat", 1, "diamond"),
@@ -41,9 +44,7 @@ ITEMS = {
 }
 
 
-# =========================================================
-# DATA
-# =========================================================
+# ======================= DATA =======================
 
 def load_data():
     if not DATA_FILE.exists():
@@ -58,73 +59,4 @@ def load_data():
 
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-
-def get_default_user(user_id):
-    return {
-        "dollar": 0,
-        "diamond": 0,
-        "vip": user_id == OWNER_ID,
-        "hero": 0,
-        "hero_xp": 0,
-        "hero_wins": 0,
-        "active_role": 0,
-        "items": {
-            k: 0
-            for k in ITEMS
-            if k not in ("hero", "active_role")
-        },
-        "active_items": {
-            k: False
-            for k in ITEMS
-            if k not in ("hero", "active_role")
-        },
-    }
-
-
-def get_user_data(user_id):
-    data = load_data()
-    uid = str(user_id)
-
-    if uid not in data:
-        data[uid] = get_default_user(user_id)
-
-    user = data[uid]
-
-    user.setdefault("dollar", 0)
-    user.setdefault("diamond", 0)
-    user["vip"] = user_id == OWNER_ID
-
-    user.setdefault("hero", 0)
-    user.setdefault("hero_xp", 0)
-    user.setdefault("hero_wins", 0)
-    user.setdefault("active_role", 0)
-
-    user.setdefault("items", {})
-    user.setdefault("active_items", {})
-
-    for key in ITEMS:
-        if key in ("hero", "active_role"):
-            continue
-
-        user["items"].setdefault(key, 0)
-        user["active_items"].setdefault(key, False)
-
-    save_data(data)
-    return data, user
-
-
-# =========================================================
-# START / LANGUAGE
-# =========================================================
-
-def get_language_buttons():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🇺🇿 O‘zbekcha", callback_data="lang_uz")],
-        [InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru")],
-        [InlineKeyboardButton("🇹🇷 Türkçe", callback_data="lang_tr")],
-        [InlineKeyboardButton("🇰🇿 Қазақша", callback_data="lang_kk")],
-        [InlineKeyboardButton("🇺🇦 Українська", callback_data="lang_uk")],
-        [InlineKeyboardButton("🇩🇪 Deutsch", callback_data="lang_de")],
-        [InlineKeyboardButton("
+        json.dump

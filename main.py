@@ -26,7 +26,6 @@ OWNER_ID = 8402159260
 OWNER_USERNAME = "Umarov_uuu"
 BOT_USERNAME = "Noiruzbot"
 
-
 ITEMS = {
     "shield": ("🛡 Qora qalqon", 200, "dollar"),
     "document": ("📜 Soxta hujjat", 1, "diamond"),
@@ -42,9 +41,9 @@ ITEMS = {
 }
 
 
-# =========================
+# =========================================================
 # DATA
-# =========================
+# =========================================================
 
 def load_data():
     if not DATA_FILE.exists():
@@ -72,11 +71,13 @@ def get_default_user(user_id):
         "hero_wins": 0,
         "active_role": 0,
         "items": {
-            k: 0 for k in ITEMS
+            k: 0
+            for k in ITEMS
             if k not in ("hero", "active_role")
         },
         "active_items": {
-            k: False for k in ITEMS
+            k: False
+            for k in ITEMS
             if k not in ("hero", "active_role")
         },
     }
@@ -104,6 +105,26 @@ def get_user_data(user_id):
     user.setdefault("active_items", {})
 
     for key in ITEMS:
-        if key not in ("hero", "active_role"):
-            user["items"].setdefault(key, 0)
-            user["
+        if key in ("hero", "active_role"):
+            continue
+
+        user["items"].setdefault(key, 0)
+        user["active_items"].setdefault(key, False)
+
+    save_data(data)
+    return data, user
+
+
+# =========================================================
+# START / LANGUAGE
+# =========================================================
+
+def get_language_buttons():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🇺🇿 O‘zbekcha", callback_data="lang_uz")],
+        [InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru")],
+        [InlineKeyboardButton("🇹🇷 Türkçe", callback_data="lang_tr")],
+        [InlineKeyboardButton("🇰🇿 Қазақша", callback_data="lang_kk")],
+        [InlineKeyboardButton("🇺🇦 Українська", callback_data="lang_uk")],
+        [InlineKeyboardButton("🇩🇪 Deutsch", callback_data="lang_de")],
+        [InlineKeyboardButton("

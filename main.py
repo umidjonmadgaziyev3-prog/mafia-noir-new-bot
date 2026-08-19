@@ -2,8 +2,19 @@ import os
 import json
 from pathlib import Path
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    BotCommand,
+    BotCommandScopeAllGroupChats,
+)
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+)
 
 
 TOKEN = os.getenv("BOT_TOKEN")
@@ -674,7 +685,6 @@ async def hero(update, context):
     _, u = get_user_data(query.from_user.id)
 
     if u["hero"] <= 0:
-
         text = (
             "⚔️ • 𝑴𝒆𝒏𝒊𝒏𝒈 𝑮𝒆𝒓𝒐𝒚𝒊𝒎 •\n\n"
             "❌ Sizda Geroy mavjud emas.\n\n"
@@ -994,7 +1004,6 @@ def get_roles_buttons():
     keyboard = []
 
     for i in range(0, len(ROLES), 2):
-
         row = [
             InlineKeyboardButton(
                 ROLES[i][0],
@@ -1015,7 +1024,7 @@ def get_roles_buttons():
     return InlineKeyboardMarkup(keyboard)
 
 
-async def roles(update, context):
+async def roles(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🎭 • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 𝑹𝒐𝒍𝒍𝒂𝒓 •\n\n"
         "Kerakli rolni tanlang:",
@@ -1023,7 +1032,7 @@ async def roles(update, context):
     )
 
 
-async def role_button(update, context):
+async def role_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
     description = ROLE_DESCRIPTIONS.get(
@@ -1038,10 +1047,74 @@ async def role_button(update, context):
 
 
 # =========================================================
+# GURUH KOMANDALARI
+# =========================================================
+
+# Bu komandalar hozircha ataylab HECH NIMA QILMAYDI.
+# Keyinchalik har biriga alohida funksiya qo‘shamiz.
+
+
+async def inactive_group_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    return
+
+
+# =========================================================
+# GURUHDA KO‘RINADIGAN KOMANDALAR
+# =========================================================
+
+GROUP_VISIBLE_COMMANDS = [
+    BotCommand("gamecreate", "O‘yin yaratish"),
+    BotCommand("gamestart", "O‘yinni boshlash"),
+    BotCommand("gamestop", "O‘yinni to‘xtatish"),
+    BotCommand("gameexit", "O‘yindan chiqish"),
+    BotCommand("paragame", "Para o‘yini yaratish"),
+]
+
+
+# =========================================================
+# GURUHDA KO‘RINMAYDIGAN KOMANDALAR
+# =========================================================
+
+GROUP_HIDDEN_COMMANDS = [
+    "para",
+    "mypara",
+    "dpara",
+    "money",
+    "give",
+    "gift",
+    "contest",
+    "dcontest",
+    "contesters",
+    "top",
+    "today",
+    "groups",
+    "richdiamond",
+    "richdollar",
+]
+
+
+# =========================================================
+# KOMANDALARNI TELEGRAMGA O‘RNATISH
+# =========================================================
+
+async def post_init(application: Application):
+    await application.bot.set_my_commands(
+        GROUP_VISIBLE_COMMANDS,
+        scope=BotCommandScopeAllGroupChats()
+    )
+
+
+# =========================================================
 # CALLBACK
 # =========================================================
 
-async def callback_handler(update, context):
+async def callback_handler(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
     query = update.callback_query
     data = query.data
 
@@ -1107,15 +1180,73 @@ def main():
     if not TOKEN:
         raise RuntimeError("BOT_TOKEN Secret topilmadi")
 
-    app = Application.builder().token(TOKEN).build()
+    app = (
+        Application.builder()
+        .token(TOKEN)
+        .post_init(post_init)
+        .build()
+    )
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("profile", profile))
-    app.add_handler(CommandHandler("roles", roles))
+    # -----------------------------------------------------
+    # ASOSIY KOMANDALAR
+    # -----------------------------------------------------
+
+    app.add_handler(
+        CommandHandler("start", start)
+    )
+
+    app.add_handler(
+        CommandHandler("profile", profile)
+    )
+
+    app.add_handler(
+        CommandHandler("roles", roles)
+    )
+
+    # -----------------------------------------------------
+    # GURUHDA KO‘RINADIGAN KOMANDALAR
+    # -----------------------------------------------------
+
+    app.add_handler(
+        CommandHandler("gamecreate", inactive_group_command)
+    )
+
+    app.add_handler(
+        CommandHandler("gamestart", inactive_group_command)
+    )
+
+    app.add_handler(
+        CommandHandler("gamestop", inactive_group_command)
+    )
+
+    app.add_handler(
+        CommandHandler("gameexit", inactive_group_command)
+    )
+
+    app.add_handler(
+        CommandHandler("paragame", inactive_group_command)
+    )
+
+    # -----------------------------------------------------
+    # GURUHDA KO‘RINMAYDIGAN KOMANDALAR
+    # -----------------------------------------------------
+
+    for command in GROUP_HIDDEN_COMMANDS:
+        app.add_handler(
+            CommandHandler(command, inactive_group_command)
+        )
+
+    # -----------------------------------------------------
+    # CALLBACK
+    # -----------------------------------------------------
 
     app.add_handler(
         CallbackQueryHandler(callback_handler)
     )
+
+    # -----------------------------------------------------
+    # BOTNI ISHLATISH
+    # -----------------------------------------------------
 
     app.run_polling(
         drop_pending_updates=True,

@@ -29,7 +29,6 @@ BOT_USERNAME = "Noiruzbot"
 # ============================================================
 
 ACTIVE_GAMES = {}
-LATEST_GAMES = {}
 
 
 def get_game_key(chat_id, message_id):
@@ -40,11 +39,8 @@ def get_registration_text(game):
     players = game.get("players", {})
 
     lines = [
-        "🎭 • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •",
-        "",
-        "📝 Ro‘yxatdan o‘tish davom etmoqda!",
-        "",
-        "👥 Ro‘yxatdan o‘tganlar:",
+        "Ro‘yxatdan o‘tish davom etmoqda!",
+        "Ro‘yxatdan o‘tganlar:",
         "",
     ]
 
@@ -58,16 +54,11 @@ def get_registration_text(game):
                 f'<a href="tg://user?id={user_id}">{name}</a>'
             )
 
-        for i in range(0, len(names), 3):
-            lines.append("  •  ".join(names[i:i + 3]))
-    else:
-        lines.append("Hozircha hech kim ro‘yxatdan o‘tmagan.")
+        for i in range(0, len(names), 4):
+            lines.append(", ".join(names[i:i + 4]))
 
-    lines.extend([
-        "",
-        "━━━━━━━━━━━━━━━━",
-        f"👥 Jami: {len(players)} ta",
-    ])
+    lines.append("")
+    lines.append(f"Jami: {len(players)} ta")
 
     return "\n".join(lines)
 
@@ -1033,8 +1024,7 @@ async def role_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # MUHIM:
-    # Asosiy 25 ta rol xabari EDIT QILINMAYDI.
+    # 25 ta rol oynasi O'ZGARMAYDI.
     # Ma'lumot kichik popup oynada chiqadi.
     await query.answer(
         f"{role_name}\n\n{description}",
@@ -1058,29 +1048,37 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     chat_id = update.effective_chat.id
 
-    # Shu guruhdagi oldingi ro'yxatdan o'tish xabarini o'chirish
-    old_game_key = LATEST_GAMES.get(chat_id)
+    # Oldingi faol ro'yxatni topamiz.
+    old_result = get_latest_game(chat_id)
 
-    if old_game_key:
-        old_game = ACTIVE_GAMES.get(old_game_key)
+    old_players = {}
 
-        if old_game:
-            try:
-                await context.bot.delete_message(
-                    chat_id=old_game["chat_id"],
-                    message_id=old_game["message_id"],
-                )
-            except Exception:
-                pass
+    if old_result:
+        old_game_key, old_game = old_result
 
-            old_game["phase"] = "closed"
+        # Eski ro'yxatdan o'tganlar va jami saqlanadi.
+        old_players = dict(
+            old_game.get("players", {})
+        )
 
-    # Yangi xabar
+        # Eski ro'yxat xabarini o'chiramiz.
+        try:
+            await context.bot.delete_message(
+                chat_id=old_game["chat_id"],
+                message_id=old_game["message_id"],
+            )
+        except Exception:
+            pass
+
+        ACTIVE_GAMES.pop(
+            old_game_key,
+            None,
+        )
+
     message = await update.message.reply_text(
         get_registration_text({
-            "players": {},
+            "players": old_players,
         }),
-        reply_markup=None,
         parse_mode="HTML",
     )
 
@@ -1092,13 +1090,11 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ACTIVE_GAMES[game_key] = {
         "chat_id": chat_id,
         "message_id": message.message_id,
-        "players": {},
+        "players": old_players,
         "started": False,
         "phase": "registration",
         "roles": {},
     }
-
-    LATEST_GAMES[chat_id] = game_key
 
     await message.edit_text(
         get_registration_text(
@@ -1150,7 +1146,7 @@ async def register_game_player(
 
     game = ACTIVE_GAMES.get(game_key)
 
-    if not game or game.get("phase") != "registration":
+    if not game:
         await update.message.reply_text(
             "❌ Bu o‘yin ro‘yxatdan o‘tishi yopilgan "
             "yoki mavjud emas."
@@ -1160,14 +1156,6 @@ async def register_game_player(
     if game.get("started"):
         await update.message.reply_text(
             "❌ Bu o‘yin allaqachon boshlangan."
-        )
-        return
-
-    players = game.get("players", {})
-
-    if len(players) >= len(ROLES):
-        await update.message.reply_text(
-            "❌ O‘yinda maksimal 25 ta o‘yinchi bo‘lishi mumkin."
         )
         return
 
@@ -1184,20 +1172,21 @@ async def register_game_player(
         or "Noma’lum"
     )
 
-    # Agar allaqachon ro'yxatdan o'tgan bo'lsa
-    if user_id in players:
+    if user_id in game["players"]:
         await update.message.reply_text(
-            "ℹ️ Siz allaqachon ro‘yxatdan o‘tgansiz!"
+            "ℹ️ Siz allaqachon ro‘yxatdan o‘tgansiz."
         )
         return
 
-    players[user_id] = {
+    if len(game["players"]) >= 25:
+        await update.message.reply_text(
+            "❌ O‘yin 25 ta o‘yinchidan oshmaydi."
+        )
+        return
+
+    game["players"][user_id] = {
         "name": name,
     }
-
-    game["players"] = players
-
-    save_data(load_data())
 
     try:
         await update.message.reply_text(
@@ -1206,7 +1195,6 @@ async def register_game_player(
     except Exception:
         pass
 
-    # Guruhdagi ro'yxat xabarini yangilash
     try:
         await context.bot.edit_message_text(
             chat_id=game["chat_id"],
@@ -1227,23 +1215,35 @@ async def register_game_player(
 # ============================================================
 
 def get_latest_game(chat_id):
-    game_key = LATEST_GAMES.get(chat_id)
+    games = []
 
-    if not game_key:
+    for game_key, game in ACTIVE_GAMES.items():
+        if game.get("chat_id") != chat_id:
+            continue
+
+        if game.get("started"):
+            continue
+
+        if game.get("phase") != "registration":
+            continue
+
+        games.append(
+            (
+                game.get("message_id", 0),
+                game_key,
+                game,
+            )
+        )
+
+    if not games:
         return None
 
-    game = ACTIVE_GAMES.get(game_key)
+    games.sort(
+        key=lambda item: item[0],
+        reverse=True,
+    )
 
-    if not game:
-        return None
-
-    if game.get("started"):
-        return None
-
-    if game.get("phase") != "registration":
-        return None
-
-    return game_key, game
+    return games[0][1], games[0][2]
 
 
 async def gamestart(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1276,7 +1276,7 @@ async def gamestart(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    if len(players) > len(ROLES):
+    if len(players) > 25:
         await update.message.reply_text(
             "❌ O‘yinchilar soni 25 tadan oshmasligi kerak."
         )

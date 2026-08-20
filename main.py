@@ -1,6 +1,7 @@
 import os
 import json
 import random
+import asyncio
 from pathlib import Path
 
 from telegram import (
@@ -15,8 +16,6 @@ from telegram.ext import (
     CommandHandler,
     CallbackQueryHandler,
     ContextTypes,
-    MessageHandler,
-    filters,
 )
 
 TOKEN = os.getenv("BOT_TOKEN")
@@ -30,9 +29,6 @@ BOT_USERNAME = "Noiruzbot"
 # O'YINLAR
 # ============================================================
 
-# MUHIM:
-# O'yin endi message_id bilan emas, chat_id bilan saqlanadi.
-# Shu sababli /gamecreate qayta bosilganda o'yinchilar yo'qolmaydi.
 ACTIVE_GAMES = {}
 
 
@@ -1045,11 +1041,6 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     chat_id = update.effective_chat.id
 
-    # --------------------------------------------------------
-    # ENG MUHIM QISM:
-    # Eski o'yin bo'lsa, o'yinchilarni olamiz.
-    # --------------------------------------------------------
-
     old_game = ACTIVE_GAMES.get(chat_id)
 
     old_players = {}
@@ -1059,7 +1050,6 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             old_game.get("players", {})
         )
 
-        # 1. AVVAL eski xabarni o'chiramiz.
         old_message_id = old_game.get("message_id")
 
         if old_message_id:
@@ -1071,10 +1061,6 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
 
-    # --------------------------------------------------------
-    # 2. O'YINCHILAR SAQLANGAN HOLDA YANGI XABAR YARATILADI.
-    # --------------------------------------------------------
-
     new_game = {
         "chat_id": chat_id,
         "message_id": None,
@@ -1083,10 +1069,6 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "phase": "registration",
         "roles": {},
     }
-
-    # --------------------------------------------------------
-    # 3. YANGI XABAR CHIQARILADI.
-    # --------------------------------------------------------
 
     message = await context.bot.send_message(
         chat_id=chat_id,
@@ -1097,15 +1079,7 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     new_game["message_id"] = message.message_id
 
-    # --------------------------------------------------------
-    # 4. YANGI O'YINNI CHAT BO'YICHA SAQLAYMIZ.
-    # --------------------------------------------------------
-
     ACTIVE_GAMES[chat_id] = new_game
-
-    # --------------------------------------------------------
-    # 5. YANGI XABARGA YANGI QO'SHILISH TUGMASI.
-    # --------------------------------------------------------
 
     await context.bot.edit_message_text(
         chat_id=chat_id,
@@ -1150,7 +1124,6 @@ async def register_game_player(
         )
         return
 
-    # join_CHAT_ID
     try:
         chat_id = int(payload[5:])
     except (ValueError, TypeError):
@@ -1159,10 +1132,6 @@ async def register_game_player(
         )
         return
 
-    # MUHIM:
-    # O'yin chat_id bo'yicha olinadi.
-    # Shu sababli gamecreate qayta bosilganda ham
-    # eski o'yinchilar saqlanib qoladi.
     game = ACTIVE_GAMES.get(chat_id)
 
     if not game:
@@ -1203,12 +1172,10 @@ async def register_game_player(
         )
         return
 
-    # O'yinchi qo'shiladi.
     game["players"][user_id] = {
         "name": name,
     }
 
-    # O'yinchilar doimiy ravishda shu game ichida saqlanadi.
     ACTIVE_GAMES[chat_id] = game
 
     try:
@@ -1218,8 +1185,6 @@ async def register_game_player(
     except Exception:
         pass
 
-    # HOZIRGI YANGI XABAR EDIT BO'LADI.
-    # Yangi xabar yaratilmaydi.
     try:
         await context.bot.edit_message_text(
             chat_id=chat_id,
@@ -1235,6 +1200,64 @@ async def register_game_player(
 # ============================================================
 # O'YINNI BOSHLASH
 # ============================================================
+
+def get_bot_shoot_button():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "Botga otish",
+                url=f"https://t.me/{BOT_USERNAME}",
+            )
+        ]
+    ])
+
+
+def get_alive_players_text(game, seconds):
+    players = game.get("players", {})
+
+    lines = [
+        "Tirik o‘yinchilar:",
+        "",
+    ]
+
+    for index, (user_id, player) in enumerate(players.items(), 1):
+        name = player.get("name", "Noma’lum")
+
+        lines.append(
+            f"{index}. {name}"
+        )
+        lines.append("")
+
+    lines.append("")
+    lines.append(
+        f"Tonggacha ⏳ {seconds} sekund qoldi"
+    )
+
+    return "\n".join(lines)
+
+
+async def update_game_timer(
+    context,
+    chat_id,
+    message_id,
+    game,
+):
+    for seconds in range(45, 0, -1):
+        try:
+            await context.bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=message_id,
+                text=get_alive_players_text(
+                    game,
+                    seconds,
+                ),
+                reply_markup=get_bot_shoot_button(),
+            )
+        except Exception:
+            pass
+
+        await asyncio.sleep(1)
+
 
 async def gamestart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
@@ -1297,18 +1320,39 @@ async def gamestart(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "alive": True,
         }
 
-    try:
-        await context.bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=game["message_id"],
-            text=(
-                "🎭 O‘yin boshlandi!\n\n"
-                f"👥 O‘yinchilar: {len(players)} ta\n"
-                "🎲 Rollar tarqatildi."
-            ),
-        )
-    except Exception:
-        pass
+    # 1-XABAR
+
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text="O‘yin boshlandi!",
+        reply_markup=get_bot_shoot_button(),
+    )
+
+    # 2-XABAR
+
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=(
+            "🌙 Tun\n\n"
+            "Shaharni qorong‘ulik qopladi. Ko‘chalarda sukunat hukm "
+            "surmoqda. Bu tun har kim uchun xavfli bo‘lishi mumkin...\n\n"
+            "Tong otgach, kimlar omon qolganini bilib olamiz."
+        ),
+        reply_markup=get_bot_shoot_button(),
+    )
+
+    # 3-XABAR
+
+    timer_message = await context.bot.send_message(
+        chat_id=chat_id,
+        text=get_alive_players_text(
+            game,
+            45,
+        ),
+        reply_markup=get_bot_shoot_button(),
+    )
+
+    # ROLLARNI SHAXSIY CHATGA YUBORISH
 
     for player_id, role_data in game["roles"].items():
         role_key = role_data["role_key"]
@@ -1331,10 +1375,13 @@ async def gamestart(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
 
-    await update.message.reply_text(
-        f"🎲 O‘yin boshlandi!\n"
-        f"👥 O‘yinchilar: {len(players)} ta\n"
-        "🎭 Rollar tarqatildi."
+    # FAQAT 3-XABARDAGI TAYMER EDIT QILINADI
+
+    await update_game_timer(
+        context,
+        chat_id,
+        timer_message.message_id,
+        game,
     )
 
 

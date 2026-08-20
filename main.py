@@ -30,6 +30,10 @@ BOT_USERNAME = "Noiruzbot"
 
 ACTIVE_GAMES = {}
 
+# Har bir guruhdagi ro'yxatdan o'tganlar alohida saqlanadi.
+# /gamecreate qayta bosilganda ham odamlar va jami yo'qolmaydi.
+SAVED_PLAYERS = {}
+
 
 def get_game_key(chat_id, message_id):
     return f"{chat_id}_{message_id}"
@@ -1046,20 +1050,25 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     chat_id = update.effective_chat.id
 
-    # Oldingi faol ro'yxatni topamiz
-    old_result = get_latest_game(chat_id)
+    # ========================================================
+    # OLDINGI O'YINDA RO'YXATDAN O'TGANLARNI OLAMIZ
+    # ========================================================
 
-    old_players = {}
+    if chat_id not in SAVED_PLAYERS:
+        SAVED_PLAYERS[chat_id] = {}
+
+    saved_players = SAVED_PLAYERS[chat_id]
+
+    # ========================================================
+    # OLDINGI FAOL XABARNI TOPAMIZ
+    # ========================================================
+
+    old_result = get_latest_game(chat_id)
 
     if old_result:
         old_game_key, old_game = old_result
 
-        # Odamlarni SAQLAB QOLAMIZ
-        old_players = dict(
-            old_game.get("players", {})
-        )
-
-        # Faqat eski XABARNI o'chiramiz
+        # Eski xabarni o'chiramiz
         try:
             await context.bot.delete_message(
                 chat_id=old_game["chat_id"],
@@ -1068,41 +1077,45 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
 
-        # Eski faol xabarni ACTIVE_GAMES dan olib tashlaymiz
+        # Eski ACTIVE_GAME ni o'chiramiz.
+        # O'yinchilar SAVED_PLAYERS ichida qoladi.
         ACTIVE_GAMES.pop(
             old_game_key,
             None,
         )
 
-    # Yangi xabar faqat /gamecreate bosilganda yaratiladi
-    # Eski o'yinchilar soni va ro'yxati saqlanadi
-    message = await update.message.reply_text(
-        get_registration_text({
-            "players": old_players,
-        }),
-        parse_mode="HTML",
-    )
+    # ========================================================
+    # YANGI XABAR YARATAMIZ
+    # ========================================================
 
-    game_key = get_game_key(
-        chat_id,
-        message.message_id,
-    )
-
-    # Eski o'yinchilarni yangi xabarga o'tkazamiz
-    ACTIVE_GAMES[game_key] = {
+    new_game = {
         "chat_id": chat_id,
-        "message_id": message.message_id,
-        "players": old_players,
+        "message_id": 0,
+        "players": dict(saved_players),
         "started": False,
         "phase": "registration",
         "roles": {},
     }
 
-    # Yangi xabarning tugmasi yangi game_key bilan ishlaydi
+    message = await update.message.reply_text(
+        get_registration_text(new_game),
+        parse_mode="HTML",
+    )
+
+    # Yangi xabarning ID sini olamiz
+    game_key = get_game_key(
+        chat_id,
+        message.message_id,
+    )
+
+    new_game["message_id"] = message.message_id
+
+    # Yangi o'yinni ACTIVE_GAMES ga qo'shamiz
+    ACTIVE_GAMES[game_key] = new_game
+
+    # Yangi xabarni tugma bilan edit qilamiz
     await message.edit_text(
-        get_registration_text(
-            ACTIVE_GAMES[game_key]
-        ),
+        get_registration_text(new_game),
         reply_markup=get_join_button(
             chat_id,
             message.message_id,
@@ -1110,6 +1123,7 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML",
     )
 
+    # Pin qilish
     try:
         await context.bot.pin_chat_message(
             chat_id=chat_id,
@@ -1175,6 +1189,10 @@ async def register_game_player(
         or "Noma’lum"
     )
 
+    # ========================================================
+    # OLDINDAN QO'SHILGAN BO'LSA
+    # ========================================================
+
     if user_id in game["players"]:
         await update.message.reply_text(
             "ℹ️ Siz allaqachon ro‘yxatdan o‘tgansiz."
@@ -1187,9 +1205,19 @@ async def register_game_player(
         )
         return
 
+    # ========================================================
+    # O'YINCHINI QO'SHAMIZ
+    # ========================================================
+
     game["players"][user_id] = {
         "name": name,
     }
+
+    # MUHIM:
+    # Odamlar va jami son keyingi /gamecreate uchun saqlanadi.
+    SAVED_PLAYERS[game["chat_id"]] = dict(
+        game["players"]
+    )
 
     try:
         await update.message.reply_text(
@@ -1198,8 +1226,10 @@ async def register_game_player(
     except Exception:
         pass
 
-    # Odam qo‘shilganda YANGI xabar chiqmaydi.
-    # Faqat mavjud ro'yxat xabari edit bo'ladi.
+    # ========================================================
+    # O'SHA XABARNI EDIT QILAMIZ
+    # ========================================================
+
     try:
         await context.bot.edit_message_text(
             chat_id=game["chat_id"],
@@ -1216,7 +1246,7 @@ async def register_game_player(
 
 
 # ============================================================
-# O'YINNI BOSHLASH
+# ENG SO'NGGI O'YINNI TOPISH
 # ============================================================
 
 def get_latest_game(chat_id):
@@ -1250,6 +1280,10 @@ def get_latest_game(chat_id):
 
     return games[0][1], games[0][2]
 
+
+# ============================================================
+# O'YINNI BOSHLASH
+# ============================================================
 
 async def gamestart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
@@ -1341,6 +1375,13 @@ async def gamestart(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         except Exception:
             pass
+
+    # O'yin boshlanganidan keyin shu guruhning saqlangan
+    # ro'yxatini tozalaymiz.
+    SAVED_PLAYERS.pop(
+        update.effective_chat.id,
+        None,
+    )
 
     await update.message.reply_text(
         f"🎲 O‘yin boshlandi!\n"

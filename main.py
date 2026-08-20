@@ -1024,8 +1024,6 @@ async def role_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # 25 ta rol oynasi O'ZGARMAYDI.
-    # Ma'lumot kichik popup oynada chiqadi.
     await query.answer(
         f"{role_name}\n\n{description}",
         show_alert=True,
@@ -1048,7 +1046,7 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     chat_id = update.effective_chat.id
 
-    # Oldingi faol ro'yxatni topamiz.
+    # Oldingi faol ro'yxatni topamiz
     old_result = get_latest_game(chat_id)
 
     old_players = {}
@@ -1056,12 +1054,12 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if old_result:
         old_game_key, old_game = old_result
 
-        # Eski ro'yxatdan o'tganlar va jami saqlanadi.
+        # Odamlarni SAQLAB QOLAMIZ
         old_players = dict(
             old_game.get("players", {})
         )
 
-        # Eski ro'yxat xabarini o'chiramiz.
+        # Faqat eski XABARNI o'chiramiz
         try:
             await context.bot.delete_message(
                 chat_id=old_game["chat_id"],
@@ -1070,11 +1068,14 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
 
+        # Eski faol xabarni ACTIVE_GAMES dan olib tashlaymiz
         ACTIVE_GAMES.pop(
             old_game_key,
             None,
         )
 
+    # Yangi xabar faqat /gamecreate bosilganda yaratiladi
+    # Eski o'yinchilar soni va ro'yxati saqlanadi
     message = await update.message.reply_text(
         get_registration_text({
             "players": old_players,
@@ -1087,6 +1088,7 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message.message_id,
     )
 
+    # Eski o'yinchilarni yangi xabarga o'tkazamiz
     ACTIVE_GAMES[game_key] = {
         "chat_id": chat_id,
         "message_id": message.message_id,
@@ -1096,6 +1098,7 @@ async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "roles": {},
     }
 
+    # Yangi xabarning tugmasi yangi game_key bilan ishlaydi
     await message.edit_text(
         get_registration_text(
             ACTIVE_GAMES[game_key]
@@ -1195,6 +1198,8 @@ async def register_game_player(
     except Exception:
         pass
 
+    # Odam qo‘shilganda YANGI xabar chiqmaydi.
+    # Faqat mavjud ro'yxat xabari edit bo'ladi.
     try:
         await context.bot.edit_message_text(
             chat_id=game["chat_id"],

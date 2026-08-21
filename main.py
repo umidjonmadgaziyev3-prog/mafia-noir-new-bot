@@ -25,89 +25,20 @@ OWNER_ID = 8402159260
 OWNER_USERNAME = "Umarov_uuu"
 BOT_USERNAME = "Noiruzbot"
 
-# ============================================================
-# O'YINLAR
-# ============================================================
-
 ACTIVE_GAMES = {}
 
 NIGHT_SECONDS = 45
+VOTE_SECONDS = 30
+DAWN_DELAY = 12
 
-# Tun rasmi
 NIGHT_IMAGE_URL = (
     "https://cdn.pixabay.com/photo/2016/11/29/03/53/"
     "architecture-1868667_1280.jpg"
 )
 
 
-def get_registration_text(game):
-    players = game.get("players", {})
-
-    lines = [
-        "Ro‘yxatdan o‘tish davom etmoqda!",
-        "Ro‘yxatdan o‘tganlar:",
-        "",
-    ]
-
-    names = []
-
-    for user_id, player in players.items():
-        name = player.get("name", "Noma’lum")
-        names.append(
-            f'<a href="tg://user?id={user_id}">{name}</a>'
-        )
-
-    for i in range(0, len(names), 4):
-        lines.append(", ".join(names[i:i + 4]))
-
-    lines.append("")
-    lines.append(f"Jami: {len(players)} ta")
-
-    return "\n".join(lines)
-
-
-def get_join_button(chat_id):
-    return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "➕ Qo‘shilish",
-                url=f"https://t.me/{BOT_USERNAME}?start=join_{chat_id}",
-            )
-        ]
-    ])
-
-
-def get_bot_button(chat_id):
-    return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "🔗 Botga otish",
-                url=f"https://t.me/{BOT_USERNAME}",
-            )
-        ]
-    ])
-
-
-def get_group_button(chat_id):
-    return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "🔗 Guruhga otish",
-                url=f"https://t.me/{BOT_USERNAME}?start=group_{chat_id}",
-            )
-        ]
-    ])
-
-
-def get_player_button(user_id, name):
-    return InlineKeyboardButton(
-        name,
-        url=f"tg://user?id={user_id}",
-    )
-
-
 # ============================================================
-# BUYUMLAR
+# DATA
 # ============================================================
 
 ITEMS = {
@@ -125,36 +56,21 @@ ITEMS = {
 }
 
 
-# ============================================================
-# DATA
-# ============================================================
-
 def load_data():
     if not DATA_FILE.exists():
         return {}
-
     try:
-        with open(DATA_FILE, "r", encoding="utf-8") as file:
-            data = json.load(file)
-
-        if isinstance(data, dict):
-            return data
-
-    except (json.JSONDecodeError, OSError):
-        pass
-
-    return {}
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
 
 
 def save_data(data):
     try:
-        with open(DATA_FILE, "w", encoding="utf-8") as file:
-            json.dump(
-                data,
-                file,
-                ensure_ascii=False,
-                indent=2,
-            )
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
     except OSError:
         pass
 
@@ -171,14 +87,10 @@ def get_default_user(user_id):
         "games": 0,
         "wins": 0,
         "items": {
-            key: 0
-            for key in ITEMS
-            if key not in ("hero", "active_role")
+            k: 0 for k in ITEMS if k not in ("hero", "active_role")
         },
         "active_items": {
-            key: False
-            for key in ITEMS
-            if key not in ("hero", "active_role")
+            k: False for k in ITEMS if k not in ("hero", "active_role")
         },
     }
 
@@ -187,11 +99,10 @@ def get_user_data(user_id):
     data = load_data()
     uid = str(user_id)
 
-    if uid not in data or not isinstance(data[uid], dict):
+    if not isinstance(data.get(uid), dict):
         data[uid] = get_default_user(user_id)
 
     user = data[uid]
-
     user.setdefault("dollar", 0)
     user.setdefault("diamond", 0)
     user["vip"] = user_id == OWNER_ID
@@ -204,731 +115,22 @@ def get_user_data(user_id):
 
     if not isinstance(user.get("items"), dict):
         user["items"] = {}
-
     if not isinstance(user.get("active_items"), dict):
         user["active_items"] = {}
 
     for key in ITEMS:
         if key in ("hero", "active_role"):
             continue
-
         user["items"].setdefault(key, 0)
         user["active_items"].setdefault(key, False)
 
     data[uid] = user
     save_data(data)
-
     return data, user
 
 
 # ============================================================
-# START
-# ============================================================
-
-def get_language_buttons():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🇺🇿 O‘zbekcha", callback_data="lang_uz")],
-        [InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru")],
-        [InlineKeyboardButton("🇹🇷 Türkçe", callback_data="lang_tr")],
-        [InlineKeyboardButton("🇰🇿 Қазақша", callback_data="lang_kk")],
-        [InlineKeyboardButton("🇺🇦 Українська", callback_data="lang_uk")],
-        [InlineKeyboardButton("🇩🇪 Deutsch", callback_data="lang_de")],
-        [InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")],
-    ])
-
-
-def get_main_buttons():
-    return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "Owner 🎩",
-                url=f"https://t.me/{OWNER_USERNAME}",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "Asosiy guruh 👥",
-                url="https://t.me/+ABdv1H2Z2_llYWYy",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "Guruhga qo‘shish ➕",
-                url=f"https://t.me/{BOT_USERNAME}?startgroup=true",
-            )
-        ],
-    ])
-
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message:
-        return
-
-    if context.args and context.args[0].startswith("join_"):
-        await register_game_player(update, context)
-        return
-
-    await update.message.reply_text(
-        "🌍 Tilni tanlang:",
-        reply_markup=get_language_buttons(),
-    )
-
-
-async def language_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-
-    await query.answer()
-
-    await query.message.edit_text(
-        "🖤 Salom! Xush kelibsiz!\n\n"
-        "🌃 Men Mafia Noir botiman. "
-        "Mafia o‘ynash uchun meni guruhingizga qo‘shing.",
-        reply_markup=get_main_buttons(),
-    )
-
-
-# ============================================================
-# PROFILE
-# ============================================================
-
-def get_profile_text(user):
-    _, data = get_user_data(user.id)
-
-    vip_line = "\n👑 VIP: Ha" if data["vip"] else ""
-
-    games = data.get("games", 0)
-    wins = data.get("wins", 0)
-
-    percent = int((wins / games) * 100) if games > 0 else 0
-
-    return (
-        "🕴️ • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •\n\n"
-        f"👤 Ism: {user.first_name or 'Noma’lum'}\n"
-        f"🆔 ID: {user.id}"
-        f"{vip_line}\n\n"
-        f"💵 Dollar: {data['dollar']}\n"
-        f"💎 Olmos: {data['diamond']}\n\n"
-        f"🛡 Qora qalqon: {data['items']['shield']}\n"
-        f"📜 Soxta hujjat: {data['items']['document']}\n"
-        f"⚖️ Afv tamg‘asi: {data['items']['forgiveness']}\n"
-        f"🩸 Qotil niqobi: {data['items']['killer_mask']}\n"
-        f"🔫 Noir miltig‘i: {data['items']['gun']}\n"
-        f"💊 Qora dori: {data['items']['black_medicine']}\n"
-        f"🧪 Verbena ekstrakti: {data['items']['verbena']}\n"
-        f"🥷 Sirli niqob: {data['items']['mystery_mask']}\n"
-        f"🛡️ Geroydan himoya: {data['items']['hero_protection']}\n\n"
-        f"⚔️ Geroy: {'Bor' if data['hero'] > 0 else 'Yo‘q'}\n"
-        f"🃏 Faol rol: "
-        f"{'Bor' if data['active_role'] > 0 else 'Yo‘q'}\n\n"
-        f"🎯 G‘alabalar: {wins}\n"
-        f"🎲 Barcha o‘yinlar: {games}\n"
-        f"📊 G‘alaba foizi: {percent}%"
-    )
-
-
-def get_profile_buttons():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("💵 Dollar olish", callback_data="dollar_exchange")],
-        [InlineKeyboardButton("💎 Olmos olish", callback_data="diamond_buy")],
-        [InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="hero")],
-        [InlineKeyboardButton("💰 Do‘kon", callback_data="shop")],
-        [InlineKeyboardButton("📖 Buyumlar haqida", callback_data="items_info")],
-        [InlineKeyboardButton("🔻", callback_data="item_control")],
-    ])
-
-
-async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message:
-        return
-
-    await update.message.reply_text(
-        get_profile_text(update.effective_user),
-        reply_markup=get_profile_buttons(),
-    )
-
-
-# ============================================================
-# DOLLAR
-# ============================================================
-
-DOLLAR_PACKAGES = [
-    (1, 600),
-    (2, 1200),
-    (3, 1800),
-    (5, 3000),
-    (10, 6000),
-    (20, 12000),
-]
-
-
-def get_dollar_buttons():
-    keyboard = []
-
-    for diamonds, dollars in DOLLAR_PACKAGES:
-        keyboard.append([
-            InlineKeyboardButton(
-                f"💎 {diamonds} → 💵 {dollars}",
-                callback_data=f"exchange_{diamonds}",
-            )
-        ])
-
-    keyboard.append([
-        InlineKeyboardButton("🔙 Orqaga", callback_data="profile")
-    ])
-
-    return InlineKeyboardMarkup(keyboard)
-
-
-async def dollar_exchange(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-
-    await query.answer()
-
-    await query.message.edit_text(
-        "💵 • 𝑫𝒐𝒍𝒍𝒂𝒓 𝒐𝒍𝒊𝒔𝒉 •\n\n"
-        "Olmosni Dollarga almashtiring:",
-        reply_markup=get_dollar_buttons(),
-    )
-
-
-async def exchange_dollar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-
-    try:
-        amount = int(query.data.split("_")[1])
-    except (IndexError, ValueError):
-        await query.answer("❌ Xatolik", show_alert=True)
-        return
-
-    data, user = get_user_data(query.from_user.id)
-
-    if query.from_user.id != OWNER_ID:
-        if user["diamond"] < amount:
-            await query.answer(
-                "❌ Olmos yetarli emas",
-                show_alert=True,
-            )
-            return
-
-        user["diamond"] -= amount
-
-    user["dollar"] += amount * 600
-
-    save_data(data)
-
-    await query.answer(
-        "✅ Savdo muvaffaqiyatli amalga oshirildi!"
-    )
-
-    await query.message.edit_text(
-        get_profile_text(query.from_user),
-        reply_markup=get_profile_buttons(),
-    )
-
-
-# ============================================================
-# OLMOS
-# ============================================================
-
-DIAMOND_PACKAGES = [
-    (5, 4000),
-    (10, 8000),
-    (25, 20000),
-    (50, 40000),
-    (100, 80000),
-    (250, 200000),
-]
-
-
-def get_diamond_buttons():
-    keyboard = []
-
-    for amount, price in DIAMOND_PACKAGES:
-        price_text = f"{price:,}".replace(",", " ")
-
-        keyboard.append([
-            InlineKeyboardButton(
-                f"💎 {amount} ta — {price_text} so‘m",
-                url=f"https://t.me/{OWNER_USERNAME}",
-            )
-        ])
-
-    keyboard.append([
-        InlineKeyboardButton(
-            "🔙 Orqaga",
-            callback_data="profile",
-        )
-    ])
-
-    return InlineKeyboardMarkup(keyboard)
-
-
-async def diamond_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-
-    await query.answer()
-
-    await query.message.edit_text(
-        "💎 • 𝑶𝒍𝒎𝒐𝒔 𝒐𝒍𝒊𝒔𝒉 •\n\n"
-        "Kerakli paketni tanlang:",
-        reply_markup=get_diamond_buttons(),
-    )
-
-
-# ============================================================
-# SHOP
-# ============================================================
-
-def get_shop_buttons():
-    keyboard = []
-
-    for key, (name, price, currency) in ITEMS.items():
-        emoji = "💵" if currency == "dollar" else "💎"
-
-        keyboard.append([
-            InlineKeyboardButton(
-                f"{name} — {emoji} {price}",
-                callback_data=f"buy_{key}",
-            )
-        ])
-
-    keyboard.append([
-        InlineKeyboardButton(
-            "🔙 Orqaga",
-            callback_data="profile",
-        )
-    ])
-
-    return InlineKeyboardMarkup(keyboard)
-
-
-async def shop(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-
-    await query.answer()
-
-    await query.message.edit_text(
-        "💰 • 𝑫𝒐‘𝒌𝒐𝒏 •\n\n"
-        "Kerakli buyumni tanlang:",
-        reply_markup=get_shop_buttons(),
-    )
-
-
-async def buy_item(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-
-    key = query.data.replace("buy_", "", 1)
-
-    if key not in ITEMS:
-        await query.answer(
-            "❌ Xatolik",
-            show_alert=True,
-        )
-        return
-
-    name, price, currency = ITEMS[key]
-
-    data, user = get_user_data(query.from_user.id)
-
-    if query.from_user.id != OWNER_ID:
-        if user[currency] < price:
-            await query.answer(
-                "❌ Mablag‘ yetarli emas",
-                show_alert=True,
-            )
-            return
-
-        user[currency] -= price
-
-    if key == "hero":
-        user["hero"] += 1
-    elif key == "active_role":
-        user["active_role"] += 1
-    else:
-        user["items"][key] += 1
-
-    save_data(data)
-
-    await query.answer(
-        "✅ Xarid muvaffaqiyatli amalga oshirildi!"
-    )
-
-    await query.message.edit_text(
-        "💰 • 𝑫𝒐‘𝒌𝒐𝒏 •\n\n"
-        "✅ Xarid muvaffaqiyatli amalga oshirildi.\n\n"
-        "Yana buyum tanlang:",
-        reply_markup=get_shop_buttons(),
-    )
-
-
-# ============================================================
-# BUYUMLAR HAQIDA
-# ============================================================
-
-DESCRIPTIONS = {
-    "shield": "bir marta hujumdan himoya qiladi.",
-    "document": "tekshiruvda rolni yashirishga yordam beradi.",
-    "forgiveness": "bir marta jazodan qutqaradi.",
-    "killer_mask": "qotilni aniqlashni qiyinlashtiradi.",
-    "gun": "bir marta hujum qilish imkonini beradi.",
-    "black_medicine": "salbiy ta’sirni olib tashlaydi.",
-    "verbena": "vampirdan himoya qiladi.",
-    "mystery_mask": "rolni vaqtincha yashiradi.",
-    "hero_protection": "geroy hujumidan bir marta himoya qiladi.",
-    "hero": "sotib olingandan keyin sizga Geroy beriladi.",
-    "active_role": "1 ta o‘yin uchun tasodifiy faol rol beradi.",
-}
-
-
-async def items_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-
-    await query.answer()
-
-    text = "📖 • 𝑩𝒖𝒚𝒖𝒎𝒍𝒂𝒓 𝒉𝒂𝒒𝒊𝒅𝒂 •\n\n"
-
-    for key, (name, _, _) in ITEMS.items():
-        text += f"{name} — {DESCRIPTIONS[key]}\n"
-
-    await query.message.edit_text(
-        text,
-        reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "🔙 Orqaga",
-                    callback_data="profile",
-                )
-            ]
-        ]),
-    )
-
-
-# ============================================================
-# ITEM CONTROL
-# ============================================================
-
-def get_control_buttons(user):
-    keyboard = []
-
-    for key, (name, _, _) in ITEMS.items():
-        if key in ("hero", "active_role"):
-            continue
-
-        keyboard.append([
-            InlineKeyboardButton(
-                f"{name} — {user['items'][key]}",
-                callback_data=f"noop_{key}",
-            )
-        ])
-
-        status = (
-            "🟢 ON"
-            if user["active_items"][key]
-            else "⚪ OFF"
-        )
-
-        keyboard.append([
-            InlineKeyboardButton(
-                status,
-                callback_data=f"toggle_{key}",
-            )
-        ])
-
-    keyboard.append([
-        InlineKeyboardButton(
-            "🔙 Orqaga",
-            callback_data="profile",
-        )
-    ])
-
-    return InlineKeyboardMarkup(keyboard)
-
-
-async def item_control(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-
-    await query.answer()
-
-    _, user = get_user_data(query.from_user.id)
-
-    await query.message.edit_text(
-        "🔻 • 𝑩𝒖𝒚𝒖𝒎𝒍𝒂𝒓𝒏𝒊 𝒃𝒐𝒔𝒉𝒒𝒂𝒓𝒊𝒔𝒉 •\n\n"
-        "Buyumni ON yoki OFF holatiga o‘tkazing.",
-        reply_markup=get_control_buttons(user),
-    )
-
-
-async def toggle_item(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-
-    key = query.data.replace("toggle_", "", 1)
-
-    if key not in ITEMS:
-        await query.answer(
-            "❌ Xatolik",
-            show_alert=True,
-        )
-        return
-
-    data, user = get_user_data(query.from_user.id)
-
-    if key not in user["items"]:
-        await query.answer(
-            "❌ Xatolik",
-            show_alert=True,
-        )
-        return
-
-    if user["items"][key] <= 0:
-        await query.answer(
-            "❌ Bu buyum sizda mavjud emas",
-            show_alert=True,
-        )
-        return
-
-    user["active_items"][key] = not user["active_items"][key]
-
-    save_data(data)
-
-    await query.answer()
-
-    await query.message.edit_text(
-        "🔻 • 𝑩𝒖𝒚𝒖𝒎𝒍𝒂𝒓𝒏𝒊 𝒃𝒐𝒔𝒉𝒒𝒂𝒓𝒊𝒔𝒉 •\n\n"
-        "Buyumni ON yoki OFF holatiga o‘tkazing.",
-        reply_markup=get_control_buttons(user),
-    )
-
-
-# ============================================================
-# HERO
-# ============================================================
-
-HERO_LEVELS = [
-    ("🥉 I — Bronze", 0, "⚔️ Hujum"),
-    ("🥈 II — Silver", 100, "🛡️ Himoya"),
-    ("🥇 III — Gold", 300, "🪖 Zirh"),
-    ("💎 IV — Diamond", 700, "⚡ Maxsus qobiliyat"),
-    ("🖤 V — Noir", 1500, "👑 Maxsus kuch"),
-]
-
-
-def get_hero_level(xp):
-    level = 1
-
-    for index, (_, needed_xp, _) in enumerate(HERO_LEVELS):
-        if xp >= needed_xp:
-            level = index + 1
-
-    return level
-
-
-def get_hero_progress(xp):
-    level = get_hero_level(xp)
-    current = HERO_LEVELS[level - 1]
-
-    if level >= 5:
-        next_xp = None
-    else:
-        next_xp = HERO_LEVELS[level][1]
-
-    return (
-        current[0],
-        current[1],
-        current[2],
-        next_xp,
-    )
-
-
-def get_hero_buttons():
-    return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "📊 Darajalar",
-                callback_data="hero_levels",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "⚡ Qobiliyatlar",
-                callback_data="hero_skills",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "🔙 Orqaga",
-                callback_data="profile",
-            )
-        ],
-    ])
-
-
-async def hero(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-
-    await query.answer()
-
-    _, user = get_user_data(query.from_user.id)
-
-    if user["hero"] <= 0:
-        await query.message.edit_text(
-            "⚔️ • 𝑴𝒆𝒏𝒊𝒏𝒈 𝑮𝒆𝒓𝒐𝒚𝒊𝒎 •\n\n"
-            "❌ Sizda Geroy mavjud emas.\n\n"
-            "💎 Do‘kondan Geroy sotib olishingiz mumkin.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "💰 Do‘konga",
-                        callback_data="shop",
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "🔙 Orqaga",
-                        callback_data="profile",
-                    )
-                ],
-            ]),
-        )
-        return
-
-    xp = user.get("hero_xp", 0)
-    wins = user.get("hero_wins", 0)
-
-    level = get_hero_level(xp)
-    name, _, power, next_xp = get_hero_progress(xp)
-
-    if next_xp is None:
-        xp_line = f"⭐ XP: {xp} — MAX"
-        next_line = "👑 Maksimal daraja ochilgan"
-    else:
-        xp_line = f"⭐ XP: {xp} / {next_xp}"
-        next_line = f"📈 Keyingi daraja: {next_xp} XP"
-
-    shield = (
-        "🛡️ Himoya: Faol"
-        if level >= 2
-        else "🛡️ Himoya: Hali ochilmagan"
-    )
-
-    text = (
-        "⚔️ • 𝑴𝒆𝒏𝒊𝒏𝒈 𝑮𝒆𝒓𝒐𝒚𝒊𝒎 •\n\n"
-        f"👤 Egasi: {query.from_user.first_name or 'Noma’lum'}\n\n"
-        f"⚔️ Geroylar: {user['hero']} ta\n"
-        f"🏆 Daraja: {name}\n"
-        f"{xp_line}\n\n"
-        f"🎯 G‘alabalar: {wins}\n"
-        f"{shield}\n"
-        f"⚡ Qobiliyat: {power}\n\n"
-        f"{next_line}\n\n"
-        "━━━━━━━━━━━━━━\n"
-        "🥉 I — Bronze\n"
-        "🥈 II — Silver\n"
-        "🥇 III — Gold\n"
-        "💎 IV — Diamond\n"
-        "🖤 V — Noir"
-    )
-
-    await query.message.edit_text(
-        text,
-        reply_markup=get_hero_buttons(),
-    )
-
-
-async def hero_levels(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-
-    await query.answer()
-
-    _, user = get_user_data(query.from_user.id)
-
-    if user["hero"] <= 0:
-        await query.answer(
-            "❌ Sizda Geroy yo‘q",
-            show_alert=True,
-        )
-        return
-
-    current_level = get_hero_level(
-        user.get("hero_xp", 0)
-    )
-
-    text = (
-        "🏆 • 𝑮𝒆𝒓𝒐𝒚 𝑫𝒂𝒓𝒂𝒋𝒂𝒍𝒂𝒓𝒊 •\n\n"
-        "🥉 I — Bronze\n"
-        "⚔️ Hujum\n"
-        "🔓 0 XP\n\n"
-        "🥈 II — Silver\n"
-        "🛡️ Himoya\n"
-        "🔓 100 XP\n\n"
-        "🥇 III — Gold\n"
-        "🪖 Zirh\n"
-        "🔓 300 XP\n\n"
-        "💎 IV — Diamond\n"
-        "⚡ Maxsus qobiliyat\n"
-        "🔓 700 XP\n\n"
-        "🖤 V — Noir\n"
-        "👑 Maxsus kuch\n"
-        "🔓 1500 XP\n\n"
-        f"📍 Hozirgi daraja: {current_level}/5"
-    )
-
-    await query.message.edit_text(
-        text,
-        reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "🔙 Geroy profiliga",
-                    callback_data="hero",
-                )
-            ]
-        ]),
-    )
-
-
-async def hero_skills(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-
-    await query.answer()
-
-    _, user = get_user_data(query.from_user.id)
-
-    if user["hero"] <= 0:
-        await query.answer(
-            "❌ Sizda Geroy yo‘q",
-            show_alert=True,
-        )
-        return
-
-    level = get_hero_level(
-        user.get("hero_xp", 0)
-    )
-
-    skills = [
-        item[2]
-        for item in HERO_LEVELS[:level]
-    ]
-
-    text = (
-        "⚡ • 𝑮𝒆𝒓𝒐𝒚 𝑸𝒐𝒃𝒊𝒍𝒊𝒚𝒂𝒕𝒍𝒂𝒓𝒊 •\n\n"
-        f"🏆 Daraja: {level}/5\n\n"
-        + "\n".join(skills)
-    )
-
-    await query.message.edit_text(
-        text,
-        reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "🔙 Geroy profiliga",
-                    callback_data="hero",
-                )
-            ]
-        ]),
-    )
-
-
-# ============================================================
-# 25 TA ROL
+# ROLES
 # ============================================================
 
 ROLES = [
@@ -959,246 +161,348 @@ ROLES = [
     ("🧛 Vampir", "vampir"),
 ]
 
+MAFIA_ROLES = {"don", "mafia"}
 
 ROLE_DESCRIPTIONS = {
-    "don": "Bu tunda kim o‘lishini siz hal qilasiz. Siz (Mafialar sardori)siz.",
-    "mafia": "Bu tunda Mafia jamoasi bilan birga harakat qilasiz.",
-    "aferist": "Aldov va hiyla orqali o‘yinda omon qolishga harakat qilasiz.",
-    "qotil": "Siz mustaqil qotilsiz.",
-    "komissar": "Siz shubhali o‘yinchilarni tekshirishingiz yoki o‘ldirishingiz mumkin.",
-    "doktor": "Siz tunda o‘yinchini himoya qilishingiz mumkin.",
-    "serjant": "Siz tunda maxsus harakat qilishingiz mumkin.",
-    "kapitan": "Siz tunda maxsus harakat qilishingiz mumkin.",
-    "fuqaro": "Siz tinchliksevar jamoa tarafidasiz.",
-    "daydi": "Siz tunda mustaqil harakat qilasiz.",
-    "sudya": "Siz ovoz berishda maxsus huquqqa egasiz.",
-    "advokat": "Siz o‘yinchini himoya qilishga yordam berasiz.",
-    "qasoskor": "Siz maxsus qasos qobiliyatiga egasiz.",
-    "buqalamun": "Siz o‘z rolingizni yashirishga qodirsiz.",
-    "kuzatuvchi": "Siz o‘yinchilar harakatini kuzatasiz.",
-    "bodyguard": "Siz boshqa o‘yinchini himoya qilishingiz mumkin.",
-    "sehrgar": "Siz maxsus sehrli qobiliyatga egasiz.",
-    "jurnalist": "Siz muhim ma’lumotlarni aniqlashga harakat qilasiz.",
-    "kimyogar": "Siz maxsus moddalar bilan ishlaysiz.",
-    "minyor": "Siz tunda maxsus tuzoq qo‘yishingiz mumkin.",
-    "koldun": "Siz sirli kuchlardan foydalanasiz.",
-    "agent": "Siz yashirin topshiriqlarni bajarasiz.",
-    "arvoh": "Siz maxsus ta’sirga ega bo‘lishingiz mumkin.",
-    "joker": "Siz o‘yinni chalkashtirib, o‘z maqsadingizga erishasiz.",
-    "vampir": "Siz tunda harakat qiladigan mustaqil rolsiz.",
+    "don": "Mafiya sardori. Tunda o‘z o‘ljangizni tanlaysiz.",
+    "mafia": "Mafia jamoasi bilan tunda harakat qilasiz.",
+    "aferist": "Aldov va hiyla orqali omon qolishga urinadi.",
+    "qotil": "Mustaqil qotil. Tunda o‘z nishonini tanlaydi.",
+    "komissar": "Tunda o‘ldirish yoki tekshirish imkoniga ega.",
+    "doktor": "Tunda bir o‘yinchini himoya qiladi.",
+    "serjant": "Komissar halok bo‘lsa, uning o‘rnini egallaydi.",
+    "kapitan": "Tunda maxsus himoya harakatini bajaradi.",
+    "fuqaro": "Tinch aholi jamoasi tarafida.",
+    "daydi": "Tunda bir o‘yinchining oldiga boradi.",
+    "sudya": "Kunduzgi ovoz berishda maxsus imkoniyatga ega.",
+    "advokat": "Kunduzgi jarayonda himoya qilishga yordam beradi.",
+    "qasoskor": "Tunda maxsus qasos harakatiga ega.",
+    "buqalamun": "O‘z rolini yashirishga qodir.",
+    "kuzatuvchi": "Tunda o‘yinchilar harakatini kuzatadi.",
+    "bodyguard": "Tunda bir o‘yinchini himoya qiladi.",
+    "sehrgar": "Tunda maxsus sehr ishlatadi.",
+    "jurnalist": "Muhim ma’lumotlarni aniqlashga harakat qiladi.",
+    "kimyogar": "Tunda maxsus moddalardan foydalanadi.",
+    "minyor": "Tunda maxsus tuzoq qo‘yadi.",
+    "koldun": "Sirli kuchlardan foydalanadi.",
+    "agent": "Yashirin kuzatuv olib boradi.",
+    "arvoh": "O‘lgandan keyin maxsus ta’sirga ega.",
+    "joker": "O‘yinni chalkashtiruvchi mustaqil rol.",
+    "vampir": "Tunda mustaqil ravishda nishon tanlaydi.",
 }
 
-
-# ============================================================
-# ROL TURLARI
-# ============================================================
-
-MAFIA_ROLES = {
-    "don",
-    "mafia",
-}
-
+# Kelishilgan asosiy tunda harakat qiluvchi rollar.
+# Serjant oddiy tunlarda harakat qilmaydi.
 NIGHT_ACTION_ROLES = {
-    "don",
-    "mafia",
-    "qotil",
-    "komissar",
-    "doktor",
-    "serjant",
-    "kapitan",
-    "daydi",
-    "qasoskor",
-    "buqalamun",
-    "kuzatuvchi",
-    "bodyguard",
-    "sehrgar",
-    "kimyogar",
-    "minyor",
-    "koldun",
-    "agent",
-    "vampir",
+    "don", "mafia", "qotil", "komissar", "doktor", "kapitan",
+    "daydi", "qasoskor", "buqalamun", "kuzatuvchi", "bodyguard",
+    "sehrgar", "kimyogar", "minyor", "koldun", "agent", "vampir"
 }
 
-NO_NIGHT_ACTION_ROLES = {
-    "aferist",
-    "fuqaro",
-    "sudya",
-    "advokat",
-    "jurnalist",
-    "arvoh",
-    "joker",
-}
+
+def role_name(role_key):
+    for name, key in ROLES:
+        if key == role_key:
+            return name
+    return role_key
 
 
 def get_roles_for_player_count(count):
-    """
-    Kichik o'yinlarda ham Komissar tushishi mumkin.
-    Katta o'yinlarda maxsus rollar ko'proq ochiladi.
-    """
-
     if count <= 6:
-        pool = [
-            "don",
-            "mafia",
-            "komissar",
-            "doktor",
-            "qotil",
-            "fuqaro",
+        return ["don", "mafia", "komissar", "doktor", "qotil", "fuqaro"]
+    if count <= 10:
+        return [
+            "don", "mafia", "komissar", "doktor", "qotil",
+            "serjant", "fuqaro", "daydi", "bodyguard", "fuqaro"
         ]
-
-    elif count <= 10:
-        pool = [
-            "don",
-            "mafia",
-            "komissar",
-            "doktor",
-            "qotil",
-            "serjant",
-            "kapitan",
-            "fuqaro",
-            "daydi",
-            "bodyguard",
+    if count <= 15:
+        return [
+            "don", "mafia", "aferist", "qotil", "komissar", "doktor",
+            "serjant", "kapitan", "fuqaro", "daydi", "sudya",
+            "advokat", "qasoskor", "buqalamun", "kuzatuvchi"
         ]
-
-    elif count <= 15:
-        pool = [
-            "don",
-            "mafia",
-            "aferist",
-            "qotil",
-            "komissar",
-            "doktor",
-            "serjant",
-            "kapitan",
-            "fuqaro",
-            "daydi",
-            "sudya",
-            "advokat",
-            "qasoskor",
-            "buqalamun",
-            "kuzatuvchi",
+    if count <= 20:
+        return [
+            "don", "mafia", "aferist", "qotil", "komissar", "doktor",
+            "serjant", "kapitan", "fuqaro", "daydi", "sudya",
+            "advokat", "qasoskor", "buqalamun", "kuzatuvchi",
+            "bodyguard", "sehrgar", "jurnalist", "kimyogar", "minyor"
         ]
-
-    elif count <= 20:
-        pool = [
-            "don",
-            "mafia",
-            "aferist",
-            "qotil",
-            "komissar",
-            "doktor",
-            "serjant",
-            "kapitan",
-            "fuqaro",
-            "daydi",
-            "sudya",
-            "advokat",
-            "qasoskor",
-            "buqalamun",
-            "kuzatuvchi",
-            "bodyguard",
-            "sehrgar",
-            "jurnalist",
-            "kimyogar",
-            "minyor",
-        ]
-
-    else:
-        pool = [
-            key
-            for _, key in ROLES
-        ]
-
-    return pool
+    return [key for _, key in ROLES]
 
 
 def make_random_roles(count):
     pool = get_roles_for_player_count(count)
+    if len(pool) < count:
+        result = pool[:]
+        while len(result) < count:
+            result.append(random.choice(pool))
+        random.shuffle(result)
+        return result
 
-    if count <= len(pool):
-        selected = random.sample(pool, count)
-    else:
-        selected = random.choices(pool, k=count)
+    result = random.sample(pool, count)
 
-    # Komissar kichik o'yinda ham tushishi uchun
-    # agar pool ichida Komissar bo'lsa, u random tanlanadi.
-    random.shuffle(selected)
+    # Kichik o‘yinda Komissar va Don tushishini ta’minlash.
+    if count >= 5 and "komissar" not in result:
+        replace_at = random.randrange(len(result))
+        result[replace_at] = "komissar"
+    if "don" not in result:
+        replace_at = random.randrange(len(result))
+        result[replace_at] = "don"
 
-    return selected
+    random.shuffle(result)
+    return result
 
 
 # ============================================================
-# ROL XABARLARI
+# COMMON BUTTONS / PROFILE
 # ============================================================
 
-def get_role_message(role_name, role_key):
-    description = ROLE_DESCRIPTIONS.get(
-        role_key,
-        "Siz maxsus rol egasisiz.",
-    )
+def bot_button():
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton("Botga o'tish", url=f"https://t.me/{BOT_USERNAME}")
+    ]])
+
+
+def group_button(chat_id):
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton(
+            "Guruhga o'tish",
+            url=f"https://t.me/{BOT_USERNAME}?start=group_{chat_id}"
+        )
+    ]])
+
+
+def user_link(user_id, name):
+    return f'<a href="tg://user?id={user_id}">{name}</a>'
+
+
+def get_profile_text(user):
+    _, data = get_user_data(user.id)
+    games = data["games"]
+    wins = data["wins"]
+    percent = int(wins * 100 / games) if games else 0
 
     return (
-        f"Siz — {role_name}siz!\n"
-        f"{description}"
+        "🕴️ • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •\n\n"
+        f"👤 Ism: {user.first_name or 'Noma’lum'}\n"
+        f"🆔 ID: {user.id}\n\n"
+        f"💵 Dollar: {data['dollar']}\n"
+        f"💎 Olmos: {data['diamond']}\n\n"
+        f"🛡 Qora qalqon: {data['items']['shield']}\n"
+        f"📜 Soxta hujjat: {data['items']['document']}\n"
+        f"⚖️ Afv tamg‘asi: {data['items']['forgiveness']}\n"
+        f"🩸 Qotil niqobi: {data['items']['killer_mask']}\n"
+        f"🔫 Noir miltig‘i: {data['items']['gun']}\n"
+        f"💊 Qora dori: {data['items']['black_medicine']}\n"
+        f"🧪 Verbena ekstrakti: {data['items']['verbena']}\n"
+        f"🥷 Sirli niqob: {data['items']['mystery_mask']}\n"
+        f"🛡️ Geroydan himoya: {data['items']['hero_protection']}\n\n"
+        f"⚔️ Geroy: {'Bor' if data['hero'] else 'Yo‘q'}\n"
+        f"🃏 Faol rol: {'Bor' if data['active_role'] else 'Yo‘q'}\n\n"
+        f"🎯 G‘alabalar: {wins}\n"
+        f"🎲 Barcha o‘yinlar: {games}\n"
+        f"📊 G‘alaba foizi: {percent}%\n"
+        f"⭐ XP: {data['hero_xp']}"
     )
 
 
-def get_partner_text(game, player_id):
-    role_data = game.get("roles", {}).get(str(player_id))
+def profile_buttons():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("💵 Dollar olish", callback_data="dollar_exchange")],
+        [InlineKeyboardButton("💎 Olmos olish", callback_data="diamond_buy")],
+        [InlineKeyboardButton("⚔️ Mening Geroyim", callback_data="hero")],
+        [InlineKeyboardButton("💰 Do‘kon", callback_data="shop")],
+        [InlineKeyboardButton("📖 Buyumlar haqida", callback_data="items_info")],
+        [InlineKeyboardButton("🔻", callback_data="item_control")],
+    ])
 
-    if not role_data:
-        return None
 
-    role_key = role_data.get("role_key")
+async def profile(update, context):
+    if not update.message:
+        return
+    await update.message.reply_text(
+        get_profile_text(update.effective_user),
+        reply_markup=profile_buttons()
+    )
 
-    if role_key not in MAFIA_ROLES:
-        return None
 
-    partners = []
+# ============================================================
+# REGISTRATION
+# ============================================================
 
-    for other_id, other_role in game["roles"].items():
-        if str(other_id) == str(player_id):
-            continue
-
-        if other_role.get("role_key") in MAFIA_ROLES:
-            partners.append(
-                (
-                    other_id,
-                    other_role.get(
-                        "name",
-                        "Noma’lum",
-                    ),
-                    other_role.get(
-                        "role_name",
-                        "",
-                    ),
-                )
-            )
-
-    if not partners:
-        return None
-
-    lines = [
-        "Sheriklaringizni eslab qoling!",
-        "",
+def registration_text(game):
+    players = game["players"]
+    lines = ["Ro‘yxatdan o‘tish davom etmoqda!", "Ro‘yxatdan o‘tganlar:", ""]
+    names = [
+        user_link(uid, p.get("name", "Noma’lum"))
+        for uid, p in players.items()
     ]
-
-    for partner_id, name, role_name in partners:
-        lines.append(
-            f'<a href="tg://user?id={partner_id}">'
-            f'{name}</a> - {role_name}'
-        )
-
+    for i in range(0, len(names), 4):
+        lines.append(", ".join(names[i:i + 4]))
+    lines += ["", f"Jami: {len(players)} ta"]
     return "\n".join(lines)
 
 
-def get_action_text(role_key):
-    actions = {
+def join_button(chat_id):
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton(
+            "➕ Qo‘shilish",
+            url=f"https://t.me/{BOT_USERNAME}?start=join_{chat_id}"
+        )
+    ]])
+
+
+async def start(update, context):
+    if not update.message:
+        return
+
+    if context.args and context.args[0].startswith("join_"):
+        await register_player(update, context)
+        return
+
+    await update.message.reply_text(
+        "🌍 Tilni tanlang:",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🇺🇿 O‘zbekcha", callback_data="lang_uz")],
+            [InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru")],
+            [InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")],
+        ])
+    )
+
+
+async def language_button(update, context):
+    q = update.callback_query
+    await q.answer()
+    await q.message.edit_text(
+        "🖤 Salom! Xush kelibsiz!\n\n"
+        "🌃 Men Mafia Noir botiman. "
+        "Mafia o‘ynash uchun meni guruhingizga qo‘shing.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("Owner 🎩", url=f"https://t.me/{OWNER_USERNAME}")],
+            [InlineKeyboardButton("Asosiy guruh 👥", url="https://t.me/+ABdv1H2Z2_llYWYy")],
+            [InlineKeyboardButton("Guruhga qo‘shish ➕", url=f"https://t.me/{BOT_USERNAME}?startgroup=true")],
+        ])
+    )
+
+
+async def gamecreate(update, context):
+    if not update.message or update.effective_chat.type not in ("group", "supergroup"):
+        return
+
+    chat_id = update.effective_chat.id
+    old = ACTIVE_GAMES.get(chat_id)
+
+    if old and old.get("message_id"):
+        try:
+            await context.bot.delete_message(chat_id, old["message_id"])
+        except Exception:
+            pass
+
+    old_players = dict(old.get("players", {})) if old else {}
+
+    game = {
+        "chat_id": chat_id,
+        "message_id": None,
+        "players": old_players,
+        "started": False,
+        "phase": "registration",
+        "roles": {},
+        "night_actions": {},
+        "night_results": {},
+        "night_messages": {},
+        "votes": {},
+        "vote_message_id": None,
+        "vote_started": False,
+        "winner": None,
+    }
+
+    msg = await context.bot.send_message(
+        chat_id,
+        registration_text(game),
+        reply_markup=join_button(chat_id),
+        parse_mode="HTML"
+    )
+    game["message_id"] = msg.message_id
+    ACTIVE_GAMES[chat_id] = game
+
+    try:
+        await context.bot.pin_chat_message(chat_id, msg.message_id, disable_notification=True)
+    except Exception:
+        pass
+
+
+async def register_player(update, context):
+    if not update.message or not context.args:
+        return
+
+    try:
+        chat_id = int(context.args[0].replace("join_", "", 1))
+    except ValueError:
+        await update.message.reply_text("❌ O‘yin topilmadi.")
+        return
+
+    game = ACTIVE_GAMES.get(chat_id)
+    if not game or game["started"]:
+        await update.message.reply_text("❌ Bu o‘yinga qo‘shilish mumkin emas.")
+        return
+
+    if len(game["players"]) >= 25:
+        await update.message.reply_text("❌ O‘yin 25 ta o‘yinchidan oshmaydi.")
+        return
+
+    uid = str(update.effective_user.id)
+    if uid in game["players"]:
+        await update.message.reply_text("ℹ️ Siz allaqachon ro‘yxatdan o‘tgansiz.")
+        return
+
+    name = update.effective_user.first_name or update.effective_user.username or "Noma’lum"
+    game["players"][uid] = {"name": name}
+
+    await update.message.reply_text("✅ Siz muvaffaqiyatli ro‘yxatdan o‘tdingiz!")
+
+    try:
+        await context.bot.edit_message_text(
+            chat_id,
+            game["message_id"],
+            registration_text(game),
+            reply_markup=join_button(chat_id),
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
+
+
+# ============================================================
+# NIGHT
+# ============================================================
+
+def alive_ids(game):
+    return [
+        uid for uid in game["players"]
+        if game["roles"].get(uid, {}).get("alive", False)
+    ]
+
+
+def alive_keyboard(game, actor_id, prefix="nighttarget"):
+    rows = []
+    for uid in alive_ids(game):
+        if uid == str(actor_id):
+            continue
+        name = game["players"][uid].get("name", "Noma’lum")
+        rows.append([InlineKeyboardButton(
+            name,
+            callback_data=f"{prefix}_{game['chat_id']}_{actor_id}_{uid}"
+        )])
+    return InlineKeyboardMarkup(rows)
+
+
+def action_text(role):
+    return {
         "don": "Kimni o‘ldirasiz?",
         "mafia": "Kimni o‘ldirasiz?",
         "qotil": "Kimni o‘ldirasiz?",
         "doktor": "Kimni davolaysiz?",
-        "serjant": "Kimni kuzatasiz?",
         "kapitan": "Kimni himoya qilasiz?",
         "daydi": "Kimning oldiga borasiz?",
         "qasoskor": "Kimdan qasos olasiz?",
@@ -1211,1250 +515,1057 @@ def get_action_text(role_key):
         "koldun": "Kimga sehr ishlatasiz?",
         "agent": "Kimni kuzatasiz?",
         "vampir": "Kimni tishlaysiz?",
-    }
-
-    return actions.get(
-        role_key,
-        "Kimni tanlaysiz?",
-    )
+    }.get(role, "Kimni tanlaysiz?")
 
 
-def get_alive_player_buttons(game, current_player_id):
-    keyboard = []
-
-    for player_id, player_data in game["players"].items():
-        if str(player_id) == str(current_player_id):
-            continue
-
-        role_data = game.get("roles", {}).get(str(player_id))
-
-        if role_data and not role_data.get("alive", True):
-            continue
-
-        name = player_data.get(
-            "name",
-            "Noma’lum",
-        )
-
-        keyboard.append([
-            InlineKeyboardButton(
-                name,
-                callback_data=(
-                    f"nighttarget_{game['chat_id']}_"
-                    f"{current_player_id}_{player_id}"
-                ),
-            )
-        ])
-
-    return InlineKeyboardMarkup(keyboard)
+def commissioner_buttons(chat_id, player_id):
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton("O‘ldirish", callback_data=f"commkill_{chat_id}_{player_id}"),
+        InlineKeyboardButton("Tekshirish", callback_data=f"commcheck_{chat_id}_{player_id}")
+    ]])
 
 
-def get_commissioner_action_buttons(chat_id, player_id):
-    return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "🔪 O‘ldirish",
-                callback_data=(
-                    f"commkill_{chat_id}_{player_id}"
-                ),
-            ),
-            InlineKeyboardButton(
-                "🔎 Tekshirish",
-                callback_data=(
-                    f"commcheck_{chat_id}_{player_id}"
-                ),
-            ),
-        ]
-    ])
-
-
-# ============================================================
-# O'YIN YARATISH
-# ============================================================
-
-async def gamecreate(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message:
-        return
-
-    if update.effective_chat.type not in (
-        "group",
-        "supergroup",
-    ):
+async def gamestart(update, context):
+    if not update.message or update.effective_chat.type not in ("group", "supergroup"):
         return
 
     chat_id = update.effective_chat.id
-
-    old_game = ACTIVE_GAMES.get(chat_id)
-
-    old_players = {}
-
-    if old_game:
-        old_players = dict(
-            old_game.get("players", {})
-        )
-
-        old_message_id = old_game.get("message_id")
-
-        if old_message_id:
-            try:
-                await context.bot.delete_message(
-                    chat_id=chat_id,
-                    message_id=old_message_id,
-                )
-            except Exception:
-                pass
-
-    new_game = {
-        "chat_id": chat_id,
-        "message_id": None,
-        "players": old_players,
-        "started": False,
-        "phase": "registration",
-        "roles": {},
-        "group_messages": [],
-        "night_action_messages": {},
-        "night_started": False,
-    }
-
-    message = await context.bot.send_message(
-        chat_id=chat_id,
-        text=get_registration_text(new_game),
-        reply_markup=get_join_button(chat_id),
-        parse_mode="HTML",
-    )
-
-    new_game["message_id"] = message.message_id
-
-    ACTIVE_GAMES[chat_id] = new_game
-
-    try:
-        await context.bot.pin_chat_message(
-            chat_id=chat_id,
-            message_id=message.message_id,
-            disable_notification=True,
-        )
-    except Exception:
-        pass
-
-
-# ============================================================
-# O'YINGA QO'SHILISH
-# ============================================================
-
-async def register_game_player(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    if not update.message:
-        return
-
-    if not context.args:
-        await update.message.reply_text(
-            "🖤 Salom! Xush kelibsiz!"
-        )
-        return
-
-    payload = context.args[0]
-
-    if not payload.startswith("join_"):
-        await update.message.reply_text(
-            "🖤 Salom! Xush kelibsiz!"
-        )
-        return
-
-    try:
-        chat_id = int(payload[5:])
-    except (ValueError, TypeError):
-        await update.message.reply_text(
-            "❌ O‘yin topilmadi."
-        )
-        return
-
     game = ACTIVE_GAMES.get(chat_id)
 
-    if not game:
-        await update.message.reply_text(
-            "❌ Bu o‘yin ro‘yxatdan o‘tishi yopilgan "
-            "yoki mavjud emas."
-        )
+    if not game or game["started"]:
+        await update.message.reply_text("❌ Faol boshlanmagan o‘yin topilmadi.")
         return
 
-    if game.get("started"):
-        await update.message.reply_text(
-            "❌ Bu o‘yin allaqachon boshlangan."
-        )
-        return
-
-    user = update.effective_user
-
-    if not user:
-        return
-
-    user_id = str(user.id)
-
-    name = (
-        user.first_name
-        or user.username
-        or "Noma’lum"
-    )
-
-    if user_id in game["players"]:
-        await update.message.reply_text(
-            "ℹ️ Siz allaqachon ro‘yxatdan o‘tgansiz."
-        )
-        return
-
-    if len(game["players"]) >= 25:
-        await update.message.reply_text(
-            "❌ O‘yin 25 ta o‘yinchidan oshmaydi."
-        )
-        return
-
-    game["players"][user_id] = {
-        "name": name,
-    }
-
-    ACTIVE_GAMES[chat_id] = game
-
-    try:
-        await update.message.reply_text(
-            "✅ Siz muvaffaqiyatli ro‘yxatdan o‘tdingiz!"
-        )
-    except Exception:
-        pass
-
-    try:
-        await context.bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=game["message_id"],
-            text=get_registration_text(game),
-            reply_markup=get_join_button(chat_id),
-            parse_mode="HTML",
-        )
-    except Exception:
-        pass
-
-
-# ============================================================
-# O'YINNI BOSHLASH
-# ============================================================
-
-async def gamestart(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message:
-        return
-
-    if update.effective_chat.type not in (
-        "group",
-        "supergroup",
-    ):
-        return
-
-    chat_id = update.effective_chat.id
-
-    game = ACTIVE_GAMES.get(chat_id)
-
-    if not game:
-        await update.message.reply_text(
-            "❌ Boshlash uchun faol o‘yin topilmadi."
-        )
-        return
-
-    if game.get("started"):
-        await update.message.reply_text(
-            "❌ Bu o‘yin allaqachon boshlangan."
-        )
-        return
-
-    players = game.get("players", {})
-
-    if not players:
-        await update.message.reply_text(
-            "❌ O‘yinda hech kim ro‘yxatdan o‘tmagan."
-        )
-        return
-
-    if len(players) > 25:
-        await update.message.reply_text(
-            "❌ O‘yinchilar soni 25 tadan oshmasligi kerak."
-        )
+    if len(game["players"]) < 5:
+        await update.message.reply_text("❌ O‘yin boshlanishi uchun kamida 5 ta o‘yinchi kerak.")
         return
 
     game["started"] = True
     game["phase"] = "night"
-    game["roles"] = {}
 
-    role_keys = make_random_roles(len(players))
+    selected_roles = make_random_roles(len(game["players"]))
 
-    player_items = list(players.items())
-
-    for index, (player_id, player_data) in enumerate(
-        player_items
-    ):
-        role_key = role_keys[index]
-
-        role_name = next(
-            name
-            for name, key in ROLES
-            if key == role_key
-        )
-
-        game["roles"][str(player_id)] = {
-            "name": player_data["name"],
-            "role_name": role_name,
+    for uid, role_key in zip(game["players"], selected_roles):
+        game["roles"][uid] = {
             "role_key": role_key,
+            "role_name": role_name(role_key),
             "alive": True,
+            "is_original_commissioner": role_key == "komissar",
         }
 
-    # ========================================================
-    # 1-XABAR
-    # ========================================================
-
-    message1 = await context.bot.send_message(
-        chat_id=chat_id,
-        text="O‘yin boshlandi!",
-        reply_markup=get_bot_button(chat_id),
+    await context.bot.send_message(
+        chat_id,
+        "O‘yin boshlandi!",
+        reply_markup=bot_button()
     )
 
-    # ========================================================
-    # 2-XABAR — RASM BILAN
-    # ========================================================
-
-    message2 = await context.bot.send_photo(
-        chat_id=chat_id,
-        photo=NIGHT_IMAGE_URL,
+    await context.bot.send_photo(
+        chat_id,
+        NIGHT_IMAGE_URL,
         caption=(
-            "🌙 Tun\n\n"
-            "Shaharni qorong‘ulik qopladi. Ko‘chalarda sukunat "
-            "hukm surmoqda.\n"
-            "Bu tun har kim uchun xavfli bo‘lishi mumkin...\n\n"
-            "Tong otgach, kimlar omon qolganini bilib olamiz."
+            "🌙 Tun boshlandi.\n\n"
+            "Shaharni qorong‘ulik qopladi. "
+            "Ko‘chalarda sukunat hukm surmoqda...\n\n"
+            "Kimdir bu tunda so‘nggi qadamini tashlashi mumkin."
         ),
-        reply_markup=get_bot_button(chat_id),
+        reply_markup=bot_button()
     )
 
-    # ========================================================
-    # 3-XABAR — TIRIK O'YINCHILAR + 45 SEKUND
-    # ========================================================
+    for uid, r in game["roles"].items():
+        try:
+            text = (
+                f"Siz — {r['role_name']}!\n\n"
+                f"{ROLE_DESCRIPTIONS.get(r['role_key'], '')}"
+            )
+            await context.bot.send_message(
+                int(uid), text, reply_markup=group_button(chat_id)
+            )
+        except Exception:
+            pass
 
-    message3 = await context.bot.send_message(
-        chat_id=chat_id,
-        text=get_alive_players_text(
-            game,
-            NIGHT_SECONDS,
-        ),
-        reply_markup=get_alive_players_keyboard(
-            game,
-            chat_id,
-        ),
-        parse_mode="HTML",
-    )
-
-    game["group_messages"] = [
-        message1.message_id,
-        message2.message_id,
-        message3.message_id,
-    ]
-
-    game["timer_message_id"] = message3.message_id
-    game["night_started"] = True
-
+    await start_night_actions(game, context)
     ACTIVE_GAMES[chat_id] = game
 
-    # ========================================================
-    # SHAXSIY ROL XABARLARI
-    # ========================================================
+    asyncio.create_task(night_timer(chat_id, context))
 
-    for player_id, role_data in game["roles"].items():
-        role_key = role_data["role_key"]
-        role_name = role_data["role_name"]
 
-        try:
-            await context.bot.send_message(
-                chat_id=int(player_id),
-                text=get_role_message(
-                    role_name,
-                    role_key,
-                ),
-                reply_markup=get_group_button(chat_id),
-            )
-        except Exception:
-            pass
+async def start_night_actions(game, context):
+    chat_id = game["chat_id"]
 
-    # ========================================================
-    # SHERIKLAR XABARI
-    # ========================================================
+    # Don/Komissar/mafia va boshqa rollarga shaxsiy tanlov.
+    # Serjant bu yerda ataylab chaqirilmaydi.
+    for uid, r in game["roles"].items():
+        if not r["alive"]:
+            continue
 
-    for player_id in game["roles"]:
-        partner_text = get_partner_text(
-            game,
-            player_id,
-        )
-
-        if not partner_text:
+        role = r["role_key"]
+        if role not in NIGHT_ACTION_ROLES:
             continue
 
         try:
-            await context.bot.send_message(
-                chat_id=int(player_id),
-                text=partner_text,
-                parse_mode="HTML",
-            )
-        except Exception:
-            pass
-
-    # ========================================================
-    # TUNGI HARAKAT XABARLARI
-    # ========================================================
-
-    for player_id, role_data in game["roles"].items():
-        role_key = role_data["role_key"]
-
-        if role_key not in NIGHT_ACTION_ROLES:
-            continue
-
-        try:
-            if role_key == "komissar":
-                action_message = await context.bot.send_message(
-                    chat_id=int(player_id),
-                    text="Nima qilasiz?",
-                    reply_markup=get_commissioner_action_buttons(
-                        chat_id,
-                        player_id,
-                    ),
+            if role == "komissar":
+                msg = await context.bot.send_message(
+                    int(uid),
+                    "Nima qilasiz?",
+                    reply_markup=commissioner_buttons(chat_id, uid)
                 )
             else:
-                action_message = await context.bot.send_message(
-                    chat_id=int(player_id),
-                    text=get_action_text(role_key),
-                    reply_markup=get_alive_player_buttons(
-                        game,
-                        player_id,
-                    ),
+                msg = await context.bot.send_message(
+                    int(uid),
+                    action_text(role),
+                    reply_markup=alive_keyboard(game, uid)
                 )
-
-            game["night_action_messages"][str(player_id)] = (
-                action_message.message_id
-            )
-
+            game["night_messages"][uid] = msg.message_id
         except Exception:
             pass
 
+
+async def night_timer(chat_id, context):
+    for _ in range(NIGHT_SECONDS):
+        await asyncio.sleep(1)
+        game = ACTIVE_GAMES.get(chat_id)
+        if not game or game["phase"] != "night":
+            return
+
+    game = ACTIVE_GAMES.get(chat_id)
+    if not game or game["phase"] != "night":
+        return
+
+    await resolve_night(game, context)
     ACTIVE_GAMES[chat_id] = game
 
-    # Taymerni alohida ishga tushiramiz.
-    asyncio.create_task(
-        night_timer(
-            chat_id,
-            context,
-        )
+
+async def resolve_night(game, context):
+    chat_id = game["chat_id"]
+
+    kills = []
+    saves = set()
+
+    for actor, action in game["night_actions"].items():
+        role = game["roles"].get(actor, {}).get("role_key")
+        target = action.get("target")
+        if not target or target not in game["roles"]:
+            continue
+
+        if role in {"don", "mafia", "qotil", "vampir"}:
+            if role == "vampir":
+                # Vampir ham tunlik hujum qiladi.
+                kills.append((target, "Vampir"))
+            else:
+                kills.append((target, role))
+
+        elif role in {"doktor", "bodyguard", "kapitan"}:
+            saves.add(target)
+
+        elif role == "komissar" and action.get("kind") == "kill":
+            kills.append((target, "Komissar"))
+
+    # Birinchi navbatda himoyalar ishlaydi.
+    deaths = []
+    for target, source in kills:
+        if target in saves:
+            continue
+        if target not in deaths:
+            deaths.append(target)
+
+    # O‘ldirilganlarning tirikligi yangilanadi.
+    for uid in deaths:
+        if uid in game["roles"]:
+            game["roles"][uid]["alive"] = False
+
+    # Komissar o‘lsa, Serjant uning o‘rnini egallaydi.
+    commissioner_dead = any(
+        r.get("role_key") == "komissar" and not r.get("alive", True)
+        for r in game["roles"].values()
     )
 
+    if commissioner_dead:
+        for uid, r in game["roles"].items():
+            if r.get("role_key") == "serjant" and r.get("alive", True):
+                r["role_key"] = "komissar"
+                r["role_name"] = "👮 Komissar"
+                r["is_original_commissioner"] = False
+                break
 
-# ============================================================
-# TIRIK O'YINCHILAR
-# ============================================================
+    await send_dawn(game, context, deaths)
+    game["phase"] = "vote_wait"
+    ACTIVE_GAMES[chat_id] = game
 
-def get_alive_players_text(game, seconds):
-    lines = [
-        "Tirik o‘yinchilar:",
+    asyncio.create_task(start_vote_after_delay(chat_id, context))
+
+
+async def send_dawn(game, context, deaths):
+    chat_id = game["chat_id"]
+
+    await context.bot.send_message(
+        chat_id,
+        "🌝 Xayrli tong!\n"
+        "🌄 Kun: 1\n\n"
+        "Shamollar tundagi sirlarni butun shaharga yetkazmoqda..."
+    )
+
+    if deaths:
+        lines = ["Tunda o‘ldirilganlar:", ""]
+        for uid in deaths:
+            name = game["players"][uid]["name"]
+            killer = "Don"
+            for actor, action in game["night_actions"].items():
+                if action.get("target") == uid:
+                    r = game["roles"].get(actor, {}).get("role_key")
+                    if r in {"don", "mafia", "qotil", "vampir", "komissar"}:
+                        killer = role_name(r)
+                        break
+            lines.append(
+                f"Tunda {game['roles'][uid]['role_name']} "
+                f"{user_link(uid, name)} vaxshiylarcha o‘ldirildi. "
+                f"Aytishlaricha, unikiga {killer} kelgan."
+            )
+        await context.bot.send_message(chat_id, "\n".join(lines), parse_mode="HTML")
+    else:
+        await context.bot.send_message(
+            chat_id,
+            "Tunda o‘ldirilganlar:\n\n"
+            "Bu tun hech kim halok bo‘lmadi."
+        )
+
+    alive = alive_ids(game)
+    lines = ["Tirik o‘yinchilar:", ""]
+    for i, uid in enumerate(alive, 1):
+        lines.append(f"{i}. {user_link(uid, game['players'][uid]['name'])}")
+
+    lines += [
         "",
+        "— Tinchlar",
+        "— Mafiyalar",
+        "",
+        f"Jami: {len(alive)} ta",
+        "",
+        "Endi kechaning natijalarini muhokama qilamiz..."
     ]
 
-    number = 1
-
-    for player_id, player in game["players"].items():
-        role_data = game["roles"].get(
-            str(player_id),
-            {},
-        )
-
-        if role_data.get("alive", True):
-            name = player.get(
-                "name",
-                "Noma’lum",
-            )
-
-            lines.append(
-                f"{number}. "
-                f'<a href="tg://user?id={player_id}">'
-                f'{name}</a>'
-            )
-
-            number += 1
-
-    lines.extend([
-        "",
-        f"Tonggacha ⏳ {seconds} sekund qoldi",
-    ])
-
-    return "\n".join(lines)
-
-
-def get_alive_players_keyboard(game, chat_id):
-    return get_bot_button(chat_id)
+    await context.bot.send_message(
+        chat_id,
+        "\n".join(lines),
+        parse_mode="HTML"
+    )
 
 
 # ============================================================
-# TAYMER
+# NIGHT CALLBACKS
 # ============================================================
 
-async def night_timer(
-    chat_id,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    for seconds in range(
-        NIGHT_SECONDS,
-        0,
-        -1,
-    ):
-        await asyncio.sleep(1)
-
-        game = ACTIVE_GAMES.get(chat_id)
-
-        if not game:
-            return
-
-        if not game.get("started"):
-            return
-
-        if game.get("phase") != "night":
-            return
-
-        try:
-            await context.bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=game["timer_message_id"],
-                text=get_alive_players_text(
-                    game,
-                    seconds - 1,
-                ),
-                reply_markup=get_alive_players_keyboard(
-                    game,
-                    chat_id,
-                ),
-                parse_mode="HTML",
-            )
-        except Exception:
-            pass
-
-    game = ACTIVE_GAMES.get(chat_id)
-
-    if not game:
-        return
-
-    if game.get("phase") != "night":
-        return
-
-    game["phase"] = "dawn"
-
-    ACTIVE_GAMES[chat_id] = game
-
-    try:
-        await context.bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=game["timer_message_id"],
-            text=get_alive_players_text(
-                game,
-                0,
-            ),
-            reply_markup=get_alive_players_keyboard(
-                game,
-                chat_id,
-            ),
-            parse_mode="HTML",
-        )
-    except Exception:
-        pass
-
-
-# ============================================================
-# TUNGI HARAKATLAR
-# ============================================================
-
-async def night_target(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    query = update.callback_query
-
-    parts = query.data.split("_")
-
+async def night_target(update, context):
+    q = update.callback_query
+    parts = q.data.split("_")
     if len(parts) != 4:
-        await query.answer(
-            "❌ Xatolik",
-            show_alert=True,
-        )
+        await q.answer("❌ Xatolik", show_alert=True)
         return
 
-    try:
-        chat_id = int(parts[1])
-        player_id = str(parts[2])
-        target_id = str(parts[3])
-    except ValueError:
-        await query.answer(
-            "❌ Xatolik",
-            show_alert=True,
-        )
-        return
+    chat_id = int(parts[1])
+    actor = str(parts[2])
+    target = str(parts[3])
 
     game = ACTIVE_GAMES.get(chat_id)
-
-    if not game:
-        await query.answer(
-            "❌ O‘yin topilmadi.",
-            show_alert=True,
-        )
+    if not game or game["phase"] != "night":
+        await q.answer("❌ Tun tugagan.", show_alert=True)
         return
 
-    if game.get("phase") != "night":
-        await query.answer(
-            "❌ Tun tugagan.",
-            show_alert=True,
-        )
+    if actor != str(q.from_user.id):
+        await q.answer("❌ Bu tanlov sizga tegishli emas.", show_alert=True)
         return
 
-    role_data = game["roles"].get(player_id)
-
-    if not role_data:
-        await query.answer(
-            "❌ Rol topilmadi.",
-            show_alert=True,
-        )
+    if target not in alive_ids(game):
+        await q.answer("❌ Bu o‘yinchi tirik emas.", show_alert=True)
         return
 
-    if not role_data.get("alive", True):
-        await query.answer(
-            "❌ Siz o‘yinda emassiz.",
-            show_alert=True,
-        )
+    role = game["roles"][actor]["role_key"]
+
+    if role == "komissar":
+        await q.answer("Avval o‘ldirish yoki tekshirishni tanlang.", show_alert=True)
         return
 
-    target_data = game["players"].get(target_id)
+    game["night_actions"][actor] = {
+        "target": target,
+        "kind": "action"
+    }
 
-    if not target_data:
-        await query.answer(
-            "❌ O‘yinchi topilmadi.",
-            show_alert=True,
-        )
-        return
+    await q.answer("Tanlov qabul qilindi.")
 
-    role_key = role_data["role_key"]
-
-    await query.answer(
-        "✅ Tanlandi!",
-    )
-
-    message_id = game.get(
-        "night_action_messages",
-        {},
-    ).get(player_id)
-
-    action_text = get_action_text(role_key)
-
-    selected_name = target_data.get(
-        "name",
-        "Noma’lum",
-    )
-
-    if role_key in ("don", "mafia", "qotil"):
-        result = (
-            f"{action_text}\n\n"
-            f"✅ Tanlandi: {selected_name}"
-        )
-
-    else:
-        result = (
-            f"{action_text}\n\n"
-            f"✅ Tanlandi: {selected_name}"
-        )
-
-    if message_id:
+    mid = game["night_messages"].get(actor)
+    if mid:
         try:
             await context.bot.edit_message_text(
-                chat_id=int(player_id),
-                message_id=message_id,
-                text=result,
+                int(actor),
+                mid,
+                f"{action_text(role)}\n\n"
+                f"Tanlov: {game['players'][target]['name']}"
             )
         except Exception:
             pass
 
 
-# ============================================================
-# KOMISSAR
-# ============================================================
-
-async def commissioner_action(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    query = update.callback_query
-
-    parts = query.data.split("_")
-
+async def commissioner_action(update, context):
+    q = update.callback_query
+    parts = q.data.split("_")
     if len(parts) != 3:
-        await query.answer(
-            "❌ Xatolik",
-            show_alert=True,
-        )
+        await q.answer("❌ Xatolik", show_alert=True)
         return
 
-    try:
-        chat_id = int(parts[1])
-        player_id = str(parts[2])
-    except ValueError:
-        await query.answer(
-            "❌ Xatolik",
-            show_alert=True,
-        )
-        return
-
+    chat_id = int(parts[1])
+    actor = str(parts[2])
     game = ACTIVE_GAMES.get(chat_id)
 
-    if not game:
-        await query.answer(
-            "❌ O‘yin topilmadi.",
-            show_alert=True,
-        )
+    if not game or game["phase"] != "night":
+        await q.answer("❌ Tun tugagan.", show_alert=True)
         return
 
-    if game.get("phase") != "night":
-        await query.answer(
-            "❌ Tun tugagan.",
-            show_alert=True,
-        )
+    if actor != str(q.from_user.id):
+        await q.answer("❌ Bu tanlov sizga tegishli emas.", show_alert=True)
         return
 
-    role_data = game["roles"].get(player_id)
-
-    if not role_data or role_data.get("role_key") != "komissar":
-        await query.answer(
-            "❌ Bu amal faqat Komissar uchun.",
-            show_alert=True,
-        )
+    role = game["roles"].get(actor, {}).get("role_key")
+    if role != "komissar":
+        await q.answer("❌ Siz Komissar emassiz.", show_alert=True)
         return
 
-    message_id = game.get(
-        "night_action_messages",
-        {},
-    ).get(player_id)
+    kind = "kill" if q.data.startswith("commkill_") else "check"
+    game["commissioner_mode"] = {actor: kind}
 
-    if not message_id:
-        await query.answer(
-            "❌ Xabar topilmadi.",
-            show_alert=True,
-        )
-        return
+    await q.answer("Tanlov qabul qilindi.")
 
-    if query.data.startswith("commkill_"):
-        text = "Kimni o‘ldirasiz?"
-
-    else:
-        text = "Kimni tekshirasiz?"
-
-    await query.answer()
-
-    try:
-        await context.bot.edit_message_text(
-            chat_id=int(player_id),
-            message_id=message_id,
-            text=text,
-            reply_markup=get_alive_player_buttons(
-                game,
-                player_id,
-            ),
-        )
-    except Exception:
-        pass
+    mid = game["night_messages"].get(actor)
+    if mid:
+        try:
+            await context.bot.edit_message_text(
+                int(actor),
+                mid,
+                "Kimni o‘ldirasiz?" if kind == "kill" else "Kimni tekshirasiz?",
+                reply_markup=alive_keyboard(game, actor, "commtarget")
+            )
+        except Exception:
+            pass
 
 
-# ============================================================
-# ROLE TEKSHIRISH / O'LDIRISH
-# ============================================================
-
-async def commissioner_target(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    query = update.callback_query
-
-    parts = query.data.split("_")
-
+async def commissioner_target(update, context):
+    q = update.callback_query
+    parts = q.data.split("_")
     if len(parts) != 4:
-        await query.answer(
-            "❌ Xatolik",
-            show_alert=True,
-        )
+        await q.answer("❌ Xatolik", show_alert=True)
         return
 
-    try:
-        chat_id = int(parts[1])
-        player_id = str(parts[2])
-        target_id = str(parts[3])
-    except ValueError:
-        await query.answer(
-            "❌ Xatolik",
-            show_alert=True,
-        )
-        return
+    chat_id = int(parts[1])
+    actor = str(parts[2])
+    target = str(parts[3])
 
     game = ACTIVE_GAMES.get(chat_id)
-
-    if not game:
-        await query.answer(
-            "❌ O‘yin topilmadi.",
-            show_alert=True,
-        )
+    if not game or game["phase"] != "night":
+        await q.answer("❌ Tun tugagan.", show_alert=True)
         return
 
-    role_data = game["roles"].get(player_id)
-
-    if not role_data:
-        await query.answer(
-            "❌ Komissar topilmadi.",
-            show_alert=True,
-        )
+    if actor != str(q.from_user.id) or target not in alive_ids(game):
+        await q.answer("❌ Tanlov mumkin emas.", show_alert=True)
         return
 
-    message_id = game.get(
-        "night_action_messages",
-        {},
-    ).get(player_id)
-
-    target_role = game["roles"].get(
-        target_id
-    )
-
-    target_player = game["players"].get(
-        target_id,
-        {},
-    )
-
-    if not target_role:
-        await query.answer(
-            "❌ O‘yinchi topilmadi.",
-            show_alert=True,
-        )
+    kind = game.get("commissioner_mode", {}).get(actor)
+    if kind not in {"kill", "check"}:
+        await q.answer("Avval amalni tanlang.", show_alert=True)
         return
 
-    target_name = target_player.get(
-        "name",
-        "Noma’lum",
-    )
+    game["night_actions"][actor] = {
+        "target": target,
+        "kind": kind
+    }
 
-    if query.data.startswith("commkilltarget_"):
-        target_role["alive"] = False
+    await q.answer("Tanlov qabul qilindi.")
 
-        text = (
-            "Kimni o‘ldirasiz?\n\n"
-            f"✅ Tanlandi: {target_name}"
-        )
+    mid = game["night_messages"].get(actor)
 
-    else:
-        role_name = target_role.get(
-            "role_name",
-            "Noma’lum",
-        )
-
+    if kind == "check":
+        target_role = game["roles"][target]["role_name"]
         text = (
             "Kimni tekshirasiz?\n\n"
-            f"🔎 {target_name} — {role_name}"
+            f"{user_link(target, game['players'][target]['name'])} — {target_role}"
         )
+        if mid:
+            try:
+                await context.bot.edit_message_text(
+                    int(actor), mid, text, parse_mode="HTML"
+                )
+            except Exception:
+                pass
+    else:
+        text = (
+            "Kimni o‘ldirasiz?\n\n"
+            f"Tanlandi: {game['players'][target]['name']}"
+        )
+        if mid:
+            try:
+                await context.bot.edit_message_text(int(actor), mid, text)
+            except Exception:
+                pass
 
-    game["roles"][target_id] = target_role
-    ACTIVE_GAMES[chat_id] = game
 
-    await query.answer(
-        "✅ Tanlandi!"
+# ============================================================
+# VOTING
+# ============================================================
+
+async def start_vote_after_delay(chat_id, context):
+    await asyncio.sleep(DAWN_DELAY)
+
+    game = ACTIVE_GAMES.get(chat_id)
+    if not game or game["phase"] != "vote_wait":
+        return
+
+    game["phase"] = "voting"
+    game["votes"] = {}
+
+    msg = await context.bot.send_message(
+        chat_id,
+        "Aybdorlarni aniqlash va jazolash vaqti keldi.\n\n"
+        "Ovoz berish boshlandi.\n"
+        "Ovoz berish uchun 30 sekund",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("Botga o'tish", url=f"https://t.me/{BOT_USERNAME}")
+        ]])
     )
 
-    if message_id:
+    game["vote_message_id"] = msg.message_id
+    ACTIVE_GAMES[chat_id] = game
+
+    # Botga o'tish tugmasi orqali shaxsiy ovoz berish.
+    for uid in alive_ids(game):
         try:
-            await context.bot.edit_message_text(
-                chat_id=int(player_id),
-                message_id=message_id,
-                text=text,
+            await context.bot.send_message(
+                int(uid),
+                "Kimga ovoz berasiz?",
+                reply_markup=vote_keyboard(game, uid)
             )
         except Exception:
             pass
 
-
-# ============================================================
-# 25 TA ROL TUGMALARI
-# ============================================================
-
-def get_roles_buttons():
-    keyboard = []
-
-    for index in range(0, len(ROLES), 2):
-        row = [
-            InlineKeyboardButton(
-                ROLES[index][0],
-                callback_data=f"role_{ROLES[index][1]}",
-            )
-        ]
-
-        if index + 1 < len(ROLES):
-            row.append(
-                InlineKeyboardButton(
-                    ROLES[index + 1][0],
-                    callback_data=f"role_{ROLES[index + 1][1]}",
-                )
-            )
-
-        keyboard.append(row)
-
-    return InlineKeyboardMarkup(keyboard)
+    asyncio.create_task(vote_timer(chat_id, context))
 
 
-async def roles(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message:
+def vote_keyboard(game, voter_id):
+    rows = []
+    for uid in alive_ids(game):
+        if uid == str(voter_id):
+            continue
+        rows.append([InlineKeyboardButton(
+            game["players"][uid]["name"],
+            callback_data=f"vote_{game['chat_id']}_{voter_id}_{uid}"
+        )])
+    return InlineKeyboardMarkup(rows)
+
+
+async def vote_timer(chat_id, context):
+    await asyncio.sleep(VOTE_SECONDS)
+
+    game = ACTIVE_GAMES.get(chat_id)
+    if not game or game["phase"] != "voting":
         return
 
-    await update.message.reply_text(
-        "🎭 • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 𝑹𝒐𝒍𝒍𝒂𝒓 •\n\n"
-        "Kerakli rolni tanlang:",
-        reply_markup=get_roles_buttons(),
-    )
+    await finish_voting(game, context)
 
 
-async def role_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
+async def vote_callback(update, context):
+    q = update.callback_query
+    parts = q.data.split("_")
+    if len(parts) != 4:
+        await q.answer("❌ Xatolik", show_alert=True)
+        return
 
-    role_key = query.data.replace(
-        "role_",
-        "",
-        1,
-    )
+    chat_id = int(parts[1])
+    voter = str(parts[2])
+    target = str(parts[3])
 
-    role_name = next(
-        (
-            name
-            for name, key in ROLES
-            if key == role_key
-        ),
-        None,
-    )
+    game = ACTIVE_GAMES.get(chat_id)
 
-    description = ROLE_DESCRIPTIONS.get(
-        role_key,
-        "Bu rol haqida ma’lumot topilmadi.",
-    )
+    if not game or game["phase"] != "voting":
+        await q.answer("❌ Ovoz berish tugagan.", show_alert=True)
+        return
 
-    if not role_name:
-        await query.answer(
-            "❌ Bu rol topilmadi.",
-            show_alert=True,
+    if voter != str(q.from_user.id):
+        await q.answer("❌ Bu ovoz sizniki emas.", show_alert=True)
+        return
+
+    if voter not in alive_ids(game) or target not in alive_ids(game):
+        await q.answer("❌ Ovoz berish mumkin emas.", show_alert=True)
+        return
+
+    game["votes"][voter] = target
+    await q.answer("Ovozingiz qabul qilindi.")
+
+    try:
+        await q.message.edit_text(
+            f"Kimga ovoz berasiz?\n\n"
+            f"Tanlovingiz: {game['players'][target]['name']}"
         )
+    except Exception:
+        pass
+
+
+async def finish_voting(game, context):
+    chat_id = game["chat_id"]
+    game["phase"] = "vote_result"
+
+    counts = {}
+    for target in game["votes"].values():
+        counts[target] = counts.get(target, 0) + 1
+
+    if not counts:
+        await context.bot.send_message(
+            chat_id,
+            "Ovozlar yetarli bo‘lmadi.\n\n"
+            "Hech kim kunduzgi yig‘ilishda hukm qilinmadi."
+        )
+        await next_round_or_end(game, context)
         return
 
-    await query.answer(
-        f"{role_name}\n\n{description}",
-        show_alert=True,
+    highest = max(counts.values())
+    leaders = [uid for uid, n in counts.items() if n == highest]
+
+    if len(leaders) != 1:
+        await context.bot.send_message(
+            chat_id,
+            "Ovozlar yakunlandi.\n\n"
+            "Bir nechta o‘yinchi bir xil ovoz oldi. "
+            "Bu safar hech kim hukm qilinmadi."
+        )
+        await next_round_or_end(game, context)
+        return
+
+    target = leaders[0]
+    target_name = game["players"][target]["name"]
+
+    confirm = await context.bot.send_message(
+        chat_id,
+        f"⚖️ {user_link(target, target_name)} bo‘yicha "
+        f"kunduzgi hukm tayyor.\n\n"
+        "Hukmni tasdiqlang.",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("✓", callback_data=f"confirm_{chat_id}_{target}"),
+            InlineKeyboardButton("X", callback_data=f"cancel_{chat_id}_{target}")
+        ]])
+    )
+    game["confirm_message_id"] = confirm.message_id
+    ACTIVE_GAMES[chat_id] = game
+
+    asyncio.create_task(confirm_timer(chat_id, context))
+
+
+async def confirm_timer(chat_id, context):
+    await asyncio.sleep(VOTE_SECONDS)
+
+    game = ACTIVE_GAMES.get(chat_id)
+    if not game or game["phase"] != "vote_result":
+        return
+
+    # Ulgurilmasa ham keyingi bosqichga o‘tadi.
+    await apply_execution(game, context)
+
+
+async def confirm_callback(update, context):
+    q = update.callback_query
+    parts = q.data.split("_")
+    if len(parts) != 3:
+        await q.answer("❌ Xatolik", show_alert=True)
+        return
+
+    chat_id = int(parts[1])
+    target = str(parts[2])
+    game = ACTIVE_GAMES.get(chat_id)
+
+    if not game or game["phase"] != "vote_result":
+        await q.answer("❌ Hukm vaqti tugagan.", show_alert=True)
+        return
+
+    if q.data.startswith("cancel_"):
+        await q.answer("Hukm bekor qilindi.")
+        game["phase"] = "vote_wait"
+        ACTIVE_GAMES[chat_id] = game
+        try:
+            await q.message.edit_text("Hukm bekor qilindi. O‘yin davom etadi.")
+        except Exception:
+            pass
+        await next_round_or_end(game, context)
+        return
+
+    await q.answer("Hukm tasdiqlandi.")
+    await apply_execution(game, context, target)
+
+
+async def apply_execution(game, context, target=None):
+    chat_id = game["chat_id"]
+
+    if target is None:
+        target = game.get("last_execution_target")
+        if target is None:
+            # Confirm xabaridagi targetni topish uchun message matni yetarli emas.
+            # Agar mavjud bo‘lsa, ovozlar ichidan yagona lider olinadi.
+            counts = {}
+            for uid in game["votes"].values():
+                counts[uid] = counts.get(uid, 0) + 1
+            if counts:
+                highest = max(counts.values())
+                leaders = [u for u, n in counts.items() if n == highest]
+                if len(leaders) == 1:
+                    target = leaders[0]
+
+    if not target or target not in game["roles"]:
+        await next_round_or_end(game, context)
+        return
+
+    game["last_execution_target"] = target
+    game["roles"][target]["alive"] = False
+
+    target_name = game["players"][target]["name"]
+    target_role = game["roles"][target]["role_name"]
+
+    total = sum(1 for v in game["votes"].values() if v == target)
+    abstain = max(0, len(alive_ids(game)) - 1 - len(game["votes"]))
+
+    await context.bot.send_message(
+        chat_id,
+        "Ovoz berish natijalari:\n"
+        f"✓ {total} ta ovoz  X {abstain} ta ovoz\n\n"
+        f"{user_link(target, target_name)} kunduzgi yig‘ilishda osildi!\n"
+        f"U edi — {target_role}.",
+        parse_mode="HTML"
+    )
+
+    await next_round_or_end(game, context)
+
+
+# ============================================================
+# WIN / END / REWARD
+# ============================================================
+
+def winner_for(game):
+    alive = alive_ids(game)
+    mafia = [
+        uid for uid in alive
+        if game["roles"][uid]["role_key"] in MAFIA_ROLES
+    ]
+    non_mafia = [
+        uid for uid in alive
+        if game["roles"][uid]["role_key"] not in MAFIA_ROLES
+    ]
+
+    if not mafia:
+        return "town"
+    if len(mafia) >= len(non_mafia):
+        return "mafia"
+    return None
+
+
+def calculate_xp(game, uid, winner):
+    role = game["roles"][uid]["role_key"]
+    alive = game["roles"][uid]["alive"]
+
+    # Maksimum 30. 30 faqat juda yaxshi natija uchun.
+    score = 4
+
+    if alive:
+        score += 3
+    if winner == "mafia" and role in MAFIA_ROLES:
+        score += 8
+    elif winner == "town" and role not in MAFIA_ROLES:
+        score += 8
+
+    actions = game.get("night_actions", {})
+    if uid in actions:
+        score += 3
+
+    # Komissarning to‘g‘ri harakati, Donning hujumi kabi foydali harakatlar.
+    if role == "komissar" and uid in actions:
+        score += 5
+
+    if score > 30:
+        score = 30
+    return score
+
+
+async def next_round_or_end(game, context):
+    result = winner_for(game)
+
+    if result:
+        await finish_game(game, context, result)
+        return
+
+    # Keyingi tun.
+    game["phase"] = "night"
+    game["night_actions"] = {}
+    game["night_messages"] = {}
+    game["commissioner_mode"] = {}
+    game["votes"] = {}
+
+    await context.bot.send_message(
+        game["chat_id"],
+        "🌙 Tun yana shaharni qopladi..."
+    )
+
+    await start_night_actions(game, context)
+    ACTIVE_GAMES[game["chat_id"]] = game
+    asyncio.create_task(night_timer(game["chat_id"], context))
+
+
+async def finish_game(game, context, winner):
+    chat_id = game["chat_id"]
+    game["phase"] = "finished"
+    game["winner"] = winner
+    ACTIVE_GAMES[chat_id] = game
+
+    winner_text = "Tinch aholi g‘alaba qozondi!" if winner == "town" else "Mafia g‘alaba qozondi!"
+
+    await context.bot.send_message(
+        chat_id,
+        f"🏁 O‘yin tugadi.\n\n{winner_text}"
+    )
+
+    data = load_data()
+
+    for uid, p in game["players"].items():
+        user_data = data.get(uid, get_default_user(int(uid)))
+        user_data.setdefault("dollar", 0)
+        user_data.setdefault("diamond", 0)
+        user_data.setdefault("games", 0)
+        user_data.setdefault("wins", 0)
+        user_data.setdefault("hero_xp", 0)
+
+        user_data["games"] += 1
+
+        role = game["roles"][uid]["role_key"]
+        player_won = (
+            winner == "mafia" and role in MAFIA_ROLES
+        ) or (
+            winner == "town" and role not in MAFIA_ROLES
+        )
+
+        dollar_reward = 70 if player_won else 20
+        xp_reward = calculate_xp(game, uid, winner)
+
+        user_data["dollar"] += dollar_reward
+
+        if player_won:
+            user_data["wins"] += 1
+            user_data["hero_wins"] = user_data.get("hero_wins", 0) + 1
+
+        user_data["hero_xp"] = min(
+            user_data.get("hero_xp", 0) + xp_reward,
+            1500
+        )
+
+        data[uid] = user_data
+
+        # O‘yin tugagach aynan bizning profilimiz.
+        try:
+            await context.bot.send_message(
+                int(uid),
+                (
+                    "🏁 • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 •\n\n"
+                    f"👤 {p['name']}\n\n"
+                    f"🎭 Rol: {game['roles'][uid]['role_name']}\n"
+                    f"{'🏆 G‘alaba' if player_won else '❌ Mag‘lubiyat'}\n\n"
+                    f"💵 O‘yin mukofoti: +{dollar_reward}\n"
+                    f"⭐ XP: +{xp_reward}\n\n"
+                    f"💵 Dollar: {user_data['dollar']}\n"
+                    f"💎 Olmos: {user_data['diamond']}\n"
+                    f"🎯 G‘alabalar: {user_data['wins']}\n"
+                    f"🎲 Barcha o‘yinlar: {user_data['games']}\n"
+                    f"⭐ XP: {user_data['hero_xp']}"
+                ),
+                reply_markup=profile_buttons()
+            )
+        except Exception:
+            pass
+
+    save_data(data)
+
+
+# ============================================================
+# ROLES COMMAND
+# ============================================================
+
+def roles_buttons():
+    rows = []
+    for i in range(0, len(ROLES), 2):
+        row = [InlineKeyboardButton(ROLES[i][0], callback_data=f"role_{ROLES[i][1]}")]
+        if i + 1 < len(ROLES):
+            row.append(InlineKeyboardButton(ROLES[i + 1][0], callback_data=f"role_{ROLES[i + 1][1]}"))
+        rows.append(row)
+    return InlineKeyboardMarkup(rows)
+
+
+async def roles(update, context):
+    if update.message:
+        await update.message.reply_text(
+            "🎭 • 𝑴𝒂𝒇𝒊𝒂 𝑵𝒐𝒊𝒓 𝑹𝒐𝒍𝒍𝒂𝒓 •\n\n"
+            "Kerakli rolni tanlang:",
+            reply_markup=roles_buttons()
+        )
+
+
+async def role_button(update, context):
+    q = update.callback_query
+    key = q.data.replace("role_", "", 1)
+    if key not in {k for _, k in ROLES}:
+        await q.answer("❌ Rol topilmadi.", show_alert=True)
+        return
+    await q.answer(
+        f"{role_name(key)}\n\n{ROLE_DESCRIPTIONS.get(key, '')}",
+        show_alert=True
     )
 
 
 # ============================================================
-# O'YIN TO'XTATISH / CHIQISH
+# SIMPLE SHOP / PROFILE CALLBACKS
 # ============================================================
 
-async def inactive_game_command(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
+DOLLAR_PACKAGES = [(1, 600), (2, 1200), (3, 1800), (5, 3000), (10, 6000), (20, 12000)]
+DIAMOND_PACKAGES = [(5, 4000), (10, 8000), (25, 20000), (50, 40000), (100, 80000)]
+
+
+async def dollar_exchange(update, context):
+    q = update.callback_query
+    await q.answer()
+    rows = [
+        [InlineKeyboardButton(f"💎 {d} → 💵 {money}", callback_data=f"exchange_{d}")]
+        for d, money in DOLLAR_PACKAGES
+    ]
+    rows.append([InlineKeyboardButton("🔙 Orqaga", callback_data="profile")])
+    await q.message.edit_text(
+        "💵 • 𝑫𝒐𝒍𝒍𝒂𝒓 𝒐𝒍𝒊𝒔𝒉 •\n\nOlmosni Dollarga almashtiring:",
+        reply_markup=InlineKeyboardMarkup(rows)
+    )
+
+
+async def exchange_dollar(update, context):
+    q = update.callback_query
+    amount = int(q.data.split("_")[1])
+    data, user = get_user_data(q.from_user.id)
+
+    if q.from_user.id != OWNER_ID:
+        if user["diamond"] < amount:
+            await q.answer("❌ Olmos yetarli emas.", show_alert=True)
+            return
+        user["diamond"] -= amount
+
+    user["dollar"] += amount * 600
+    save_data(data)
+    await q.answer("✅ Amal bajarildi.")
+    await q.message.edit_text(get_profile_text(q.from_user), reply_markup=profile_buttons())
+
+
+async def diamond_buy(update, context):
+    q = update.callback_query
+    await q.answer()
+    rows = []
+    for amount, price in DIAMOND_PACKAGES:
+        rows.append([InlineKeyboardButton(
+            f"💎 {amount} ta — {price:,} so‘m".replace(",", " "),
+            url=f"https://t.me/{OWNER_USERNAME}"
+        )])
+    rows.append([InlineKeyboardButton("🔙 Orqaga", callback_data="profile")])
+    await q.message.edit_text(
+        "💎 • 𝑶𝒍𝒎𝒐𝒔 𝒐𝒍𝒊𝒔𝒉 •\n\nKerakli paketni tanlang:",
+        reply_markup=InlineKeyboardMarkup(rows)
+    )
+
+
+async def shop(update, context):
+    q = update.callback_query
+    await q.answer()
+    rows = []
+    for key, (name, price, currency) in ITEMS.items():
+        icon = "💵" if currency == "dollar" else "💎"
+        rows.append([InlineKeyboardButton(
+            f"{name} — {icon} {price}", callback_data=f"buy_{key}"
+        )])
+    rows.append([InlineKeyboardButton("🔙 Orqaga", callback_data="profile")])
+    await q.message.edit_text(
+        "💰 • 𝑫𝒐‘𝒌𝒐𝒏 •\n\nKerakli buyumni tanlang:",
+        reply_markup=InlineKeyboardMarkup(rows)
+    )
+
+
+async def buy_item(update, context):
+    q = update.callback_query
+    key = q.data.replace("buy_", "", 1)
+    if key not in ITEMS:
+        await q.answer("❌ Xatolik.", show_alert=True)
+        return
+
+    name, price, currency = ITEMS[key]
+    data, user = get_user_data(q.from_user.id)
+
+    if q.from_user.id != OWNER_ID:
+        if user[currency] < price:
+            await q.answer("❌ Mablag‘ yetarli emas.", show_alert=True)
+            return
+        user[currency] -= price
+
+    if key == "hero":
+        user["hero"] += 1
+    elif key == "active_role":
+        user["active_role"] += 1
+    else:
+        user["items"][key] += 1
+
+    save_data(data)
+    await q.answer("✅ Xarid muvaffaqiyatli.")
+    await q.message.edit_text(
+        "💰 • 𝑫𝒐‘𝒌𝒐𝒏 •\n\n"
+        "✅ Xarid muvaffaqiyatli amalga oshirildi.\n\n"
+        "Yana buyum tanlang:",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("💰 Do‘kon", callback_data="shop")],
+            [InlineKeyboardButton("🔙 Profil", callback_data="profile")]
+        ])
+    )
+
+
+async def items_info(update, context):
+    q = update.callback_query
+    await q.answer()
+    text = "📖 • 𝑩𝒖𝒚𝒖𝒎𝒍𝒂𝒓 𝒉𝒂𝒒𝒊𝒅𝒂 •\n\n"
+    for key, (name, _, _) in ITEMS.items():
+        text += f"{name} — mavjud buyum.\n"
+    await q.message.edit_text(
+        text,
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔙 Orqaga", callback_data="profile")]
+        ])
+    )
+
+
+async def item_control(update, context):
+    q = update.callback_query
+    await q.answer()
+    _, user = get_user_data(q.from_user.id)
+    rows = []
+    for key, (name, _, _) in ITEMS.items():
+        if key in ("hero", "active_role"):
+            continue
+        status = "🟢 ON" if user["active_items"][key] else "⚪ OFF"
+        rows.append([InlineKeyboardButton(
+            f"{name} — {user['items'][key]} | {status}",
+            callback_data=f"toggle_{key}"
+        )])
+    rows.append([InlineKeyboardButton("🔙 Orqaga", callback_data="profile")])
+    await q.message.edit_text(
+        "🔻 • 𝑩𝒖𝒚𝒖𝒎𝒍𝒂𝒓𝒏𝒊 𝒃𝒐𝒔𝒉𝒒𝒂𝒓𝒊𝒔𝒉 •",
+        reply_markup=InlineKeyboardMarkup(rows)
+    )
+
+
+async def toggle_item(update, context):
+    q = update.callback_query
+    key = q.data.replace("toggle_", "", 1)
+    data, user = get_user_data(q.from_user.id)
+
+    if user["items"].get(key, 0) <= 0:
+        await q.answer("❌ Bu buyum sizda mavjud emas.", show_alert=True)
+        return
+
+    user["active_items"][key] = not user["active_items"][key]
+    save_data(data)
+    await q.answer("Holat o‘zgartirildi.")
+    await item_control(update, context)
+
+
+# ============================================================
+# CALLBACK ROUTER
+# ============================================================
+
+async def callback_handler(update, context):
+    q = update.callback_query
+    data = q.data or ""
+
+    if data.startswith("lang_"):
+        await language_button(update, context)
+    elif data == "profile":
+        await q.answer()
+        await q.message.edit_text(get_profile_text(q.from_user), reply_markup=profile_buttons())
+    elif data == "dollar_exchange":
+        await dollar_exchange(update, context)
+    elif data.startswith("exchange_"):
+        await exchange_dollar(update, context)
+    elif data == "diamond_buy":
+        await diamond_buy(update, context)
+    elif data == "shop":
+        await shop(update, context)
+    elif data.startswith("buy_"):
+        await buy_item(update, context)
+    elif data == "items_info":
+        await items_info(update, context)
+    elif data == "item_control":
+        await item_control(update, context)
+    elif data.startswith("toggle_"):
+        await toggle_item(update, context)
+    elif data.startswith("nighttarget_"):
+        await night_target(update, context)
+    elif data.startswith("commkill_") or data.startswith("commcheck_"):
+        await commissioner_action(update, context)
+    elif data.startswith("commtarget_"):
+        await commissioner_target(update, context)
+    elif data.startswith("vote_"):
+        await vote_callback(update, context)
+    elif data.startswith("confirm_") or data.startswith("cancel_"):
+        await confirm_callback(update, context)
+    elif data.startswith("role_"):
+        await role_button(update, context)
+    else:
+        await q.answer()
+
+
+# ============================================================
+# COMMANDS / MAIN
+# ============================================================
+
+async def inactive_command(update, context):
     return
 
 
-async def inactive_group_command(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    return
-
-
-# ============================================================
-# GROUP COMMANDS
-# ============================================================
-
-GROUP_VISIBLE_COMMANDS = [
-    BotCommand(
-        "gamecreate",
-        "O‘yin yaratish",
-    ),
-    BotCommand(
-        "gamestart",
-        "O‘yinni boshlash",
-    ),
-    BotCommand(
-        "gamestop",
-        "O‘yinni to‘xtatish",
-    ),
-    BotCommand(
-        "gameexit",
-        "O‘yindan chiqish",
-    ),
-    BotCommand(
-        "paragame",
-        "Para o‘yini yaratish",
-    ),
-]
-
-
-GROUP_HIDDEN_COMMANDS = [
-    "para",
-    "mypara",
-    "dpara",
-    "money",
-    "give",
-    "gift",
-    "contest",
-    "dcontest",
-    "contesters",
-    "top",
-    "today",
-    "groups",
-    "richdiamond",
-    "richdollar",
+GROUP_COMMANDS = [
+    BotCommand("gamecreate", "O‘yin yaratish"),
+    BotCommand("gamestart", "O‘yinni boshlash"),
+    BotCommand("gamestop", "O‘yinni to‘xtatish"),
+    BotCommand("gameexit", "O‘yindan chiqish"),
 ]
 
 
 async def post_init(application):
     await application.bot.set_my_commands(
-        GROUP_VISIBLE_COMMANDS,
-        scope=BotCommandScopeAllGroupChats(),
+        GROUP_COMMANDS,
+        scope=BotCommandScopeAllGroupChats()
     )
 
 
-# ============================================================
-# CALLBACK
-# ============================================================
-
-async def callback_handler(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    query = update.callback_query
-
-    if not query:
-        return
-
-    data = query.data or ""
-
-    if data.startswith("lang_"):
-        await language_button(
-            update,
-            context,
-        )
-
-    elif data == "profile":
-        await query.answer()
-
-        await query.message.edit_text(
-            get_profile_text(
-                query.from_user
-            ),
-            reply_markup=get_profile_buttons(),
-        )
-
-    elif data == "dollar_exchange":
-        await dollar_exchange(
-            update,
-            context,
-        )
-
-    elif data.startswith("exchange_"):
-        await exchange_dollar(
-            update,
-            context,
-        )
-
-    elif data == "diamond_buy":
-        await diamond_buy(
-            update,
-            context,
-        )
-
-    elif data == "shop":
-        await shop(
-            update,
-            context,
-        )
-
-    elif data.startswith("buy_"):
-        await buy_item(
-            update,
-            context,
-        )
-
-    elif data == "items_info":
-        await items_info(
-            update,
-            context,
-        )
-
-    elif data == "item_control":
-        await item_control(
-            update,
-            context,
-        )
-
-    elif data.startswith("toggle_"):
-        await toggle_item(
-            update,
-            context,
-        )
-
-    elif data.startswith("noop_"):
-        await query.answer()
-
-    elif data == "hero":
-        await hero(
-            update,
-            context,
-        )
-
-    elif data == "hero_levels":
-        await hero_levels(
-            update,
-            context,
-        )
-
-    elif data == "hero_skills":
-        await hero_skills(
-            update,
-            context,
-        )
-
-    elif data.startswith("role_"):
-        await role_button(
-            update,
-            context,
-        )
-
-    elif data.startswith("commkill_"):
-        await commissioner_action(
-            update,
-            context,
-        )
-
-    elif data.startswith("commcheck_"):
-        await commissioner_action(
-            update,
-            context,
-        )
-
-    elif data.startswith("commkilltarget_"):
-        await commissioner_target(
-            update,
-            context,
-        )
-
-    elif data.startswith("commchecktarget_"):
-        await commissioner_target(
-            update,
-            context,
-        )
-
-    elif data.startswith("nighttarget_"):
-        await night_target(
-            update,
-            context,
-        )
-
-    else:
-        await query.answer()
-
-
-# ============================================================
-# MAIN
-# ============================================================
-
 def main():
     if not TOKEN:
-        raise RuntimeError(
-            "BOT_TOKEN Secret topilmadi"
-        )
+        raise RuntimeError("BOT_TOKEN Secret topilmadi")
 
     application = (
-        Application
-        .builder()
+        Application.builder()
         .token(TOKEN)
         .post_init(post_init)
         .build()
     )
 
-    application.add_handler(
-        CommandHandler(
-            "start",
-            start,
-        )
-    )
-
-    application.add_handler(
-        CommandHandler(
-            "profile",
-            profile,
-        )
-    )
-
-    application.add_handler(
-        CommandHandler(
-            "roles",
-            roles,
-        )
-    )
-
-    application.add_handler(
-        CommandHandler(
-            "gamecreate",
-            gamecreate,
-        )
-    )
-
-    application.add_handler(
-        CommandHandler(
-            "gamestart",
-            gamestart,
-        )
-    )
-
-    application.add_handler(
-        CommandHandler(
-            "gamestop",
-            inactive_game_command,
-        )
-    )
-
-    application.add_handler(
-        CommandHandler(
-            "gameexit",
-            inactive_game_command,
-        )
-    )
-
-    application.add_handler(
-        CommandHandler(
-            "paragame",
-            inactive_game_command,
-        )
-    )
-
-    for command in GROUP_HIDDEN_COMMANDS:
-        application.add_handler(
-            CommandHandler(
-                command,
-                inactive_group_command,
-            )
-        )
-
-    application.add_handler(
-        CallbackQueryHandler(
-            callback_handler
-        )
-    )
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("profile", profile))
+    application.add_handler(CommandHandler("roles", roles))
+    application.add_handler(CommandHandler("gamecreate", gamecreate))
+    application.add_handler(CommandHandler("gamestart", gamestart))
+    application.add_handler(CommandHandler("gamestop", inactive_command))
+    application.add_handler(CommandHandler("gameexit", inactive_command))
+    application.add_handler(CallbackQueryHandler(callback_handler))
 
     application.run_polling(
         drop_pending_updates=True,
-        allowed_updates=Update.ALL_TYPES,
+        allowed_updates=Update.ALL_TYPES
     )
 
 
